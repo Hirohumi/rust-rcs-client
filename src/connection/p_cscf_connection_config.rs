@@ -104,8 +104,10 @@ impl PCscfConnectionConfig {
                     let p_cscf_address = self.p_cscf_addresses.get(self.p);
                     self.p += 1;
                     if let Some((address, address_type)) = p_cscf_address {
-                        let proto = if network_type == 1 {
+                        let proto = if network_type == 2 {
                             &self.transport_proto.ps_signalling
+                        } else if network_type == 3 {
+                            &self.transport_proto.ps_signalling_roaming
                         } else {
                             &self.transport_proto.wifi_signalling
                         };

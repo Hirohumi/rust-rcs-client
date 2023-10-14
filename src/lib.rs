@@ -153,12 +153,14 @@ impl RcsClient {
                     let state_cb_context = state_cb_context.lock().unwrap();
                     let state_cb_context_ptr = state_cb_context.0.as_ptr();
                     match state {
-                        rcs_engine::RcsEngineRegistrationState::NONE
-                        | rcs_engine::RcsEngineRegistrationState::AUTHENTICATED(_) => {
+                        rcs_engine::RcsEngineRegistrationState::NONE => {
                             state_cb(0, state_cb_context_ptr)
                         }
-                        rcs_engine::RcsEngineRegistrationState::MAINTAINED(_) => {
+                        rcs_engine::RcsEngineRegistrationState::AUTHENTICATED(_) => {
                             state_cb(1, state_cb_context_ptr)
+                        }
+                        rcs_engine::RcsEngineRegistrationState::MAINTAINED(_) => {
+                            state_cb(2, state_cb_context_ptr)
                         }
                     }
                 }
