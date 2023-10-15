@@ -59,7 +59,7 @@ use ffi::{
     StateChangeCallbackContext, StateChangeCallbackContextWrapper,
 };
 use messaging::ffi::{
-    DownloadFileResultCallback, DownloadFileResultCallbackContext,
+    get_recipient_type, DownloadFileResultCallback, DownloadFileResultCallbackContext,
     DownloadFileResultCallbackContextWrapper, MessageResultCallback, MessageResultCallbackContext,
     MessageResultCallbackContextWrapper, SendImdnReportResultCallback,
     SendImdnReportResultCallbackContext, SendImdnReportResultCallbackContextWrapper,
@@ -604,7 +604,7 @@ pub unsafe extern "C" fn rcs_client_send_message(
     message_type: *const c_char,
     message_content: *const c_char,
     recipient: *const c_char,
-    recipient_is_chatbot: bool,
+    recipient_type: i8,
     cb: Option<MessageResultCallback>,
     cb_context: *mut MessageResultCallbackContext,
 ) {
@@ -614,29 +614,32 @@ pub unsafe extern "C" fn rcs_client_send_message(
 
     if let Some(rcs_runtime) = rcs_runtime.as_ref() {
         if let Some(client) = client.as_ref() {
-            let cb_context_ = Arc::new(Mutex::new(cb_context));
-
             let message_type = CStr::from_ptr(message_type).to_string_lossy();
             let message_content = CStr::from_ptr(message_content).to_string_lossy();
             let recipient = CStr::from_ptr(recipient).to_string_lossy();
+            let recipient_type = get_recipient_type(recipient_type);
 
-            client.engine.send_message(
-                &message_type,
-                &message_content,
-                &recipient,
-                recipient_is_chatbot,
-                move |status_code, reason_phrase| {
-                    if let Some(cb) = cb {
-                        let reason_phrase = CString::new(reason_phrase).unwrap();
-                        let cb_context = cb_context_.lock().unwrap();
-                        let cb_context_ptr = cb_context.0.as_ptr();
-                        cb(status_code, reason_phrase.as_ptr(), cb_context_ptr);
-                    }
-                },
-                &rcs_runtime.rt,
-            );
+            if let Some(recipient_type) = recipient_type {
+                let cb_context_ = Arc::new(Mutex::new(cb_context));
 
-            return;
+                client.engine.send_message(
+                    &message_type,
+                    &message_content,
+                    &recipient,
+                    recipient_type,
+                    move |status_code, reason_phrase| {
+                        if let Some(cb) = cb {
+                            let reason_phrase = CString::new(reason_phrase).unwrap();
+                            let cb_context = cb_context_.lock().unwrap();
+                            let cb_context_ptr = cb_context.0.as_ptr();
+                            cb(status_code, reason_phrase.as_ptr(), cb_context_ptr);
+                        }
+                    },
+                    &rcs_runtime.rt,
+                );
+
+                return;
+            }
         }
     }
 

@@ -16,6 +16,38 @@ use std::ptr::NonNull;
 
 use libc::c_char;
 
+pub enum RecipientType {
+    Contact,
+    Chatbot,
+    Group,
+    ResourceList,
+}
+
+impl From<&RecipientType> for RecipientType {
+    fn from(recipient_type: &RecipientType) -> RecipientType {
+        match recipient_type {
+            RecipientType::Contact => RecipientType::Contact,
+            RecipientType::Chatbot => RecipientType::Chatbot,
+            RecipientType::Group => RecipientType::Group,
+            RecipientType::ResourceList => RecipientType::ResourceList,
+        }
+    }
+}
+
+pub fn get_recipient_type(recipient_type: i8) -> Option<RecipientType> {
+    if recipient_type == 0 {
+        Some(RecipientType::Contact)
+    } else if recipient_type == 1 {
+        Some(RecipientType::Chatbot)
+    } else if recipient_type == 2 {
+        Some(RecipientType::Group)
+    } else if recipient_type == 3 {
+        Some(RecipientType::ResourceList)
+    } else {
+        None
+    }
+}
+
 pub type MessageResultCallback = extern "C" fn(
     status_code: u16,
     reason_phrase: *const c_char,

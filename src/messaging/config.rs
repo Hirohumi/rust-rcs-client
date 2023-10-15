@@ -23,6 +23,9 @@ pub struct MessagingConfigs {
 
     pub conf_fcty_uri: Option<String>,
 
+    pub max_one_to_many_recipients: i32,
+    pub one_to_many_selected_technology: i32,
+
     pub im_session_auto_accept: i32,
     pub im_session_auto_accept_group_chat: i32,
     pub im_session_timer: i32,
@@ -43,6 +46,9 @@ impl MessagingConfigs {
             chat_auth: 0,
             group_chat_auth: 0,
             standalone_msg_auth: 0,
+
+            max_one_to_many_recipients: 0,
+            one_to_many_selected_technology: 0,
 
             max_ad_hoc_group_size: 0,
 
@@ -71,6 +77,10 @@ impl MessagingConfigs {
         }
 
         if let Some(messaging_config) = rcs_app.get_messaging_config() {
+            self.max_one_to_many_recipients = messaging_config.get_max_one_to_many_recipients();
+            self.one_to_many_selected_technology =
+                messaging_config.get_one_to_many_selected_technology();
+
             if let Some(chat_config) = messaging_config.get_chat_config() {
                 self.max_ad_hoc_group_size = chat_config.get_max_ad_hoc_group_size();
                 self.conf_fcty_uri = chat_config.get_conf_fcty_uri();

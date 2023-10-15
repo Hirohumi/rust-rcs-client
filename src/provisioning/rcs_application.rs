@@ -120,6 +120,26 @@ pub struct Messaging<'a> {
 }
 
 impl Messaging<'_> {
+    pub fn get_max_one_to_many_recipients(&self) -> i32 {
+        if let Some(p) = self.root.get_parameter("max1ToManyRecipients") {
+            if let Ok(i) = p.parse::<i32>() {
+                return i;
+            }
+        }
+
+        0
+    }
+
+    pub fn get_one_to_many_selected_technology(&self) -> i32 {
+        if let Some(p) = self.root.get_parameter("1toManySelectedTech") {
+            if let Ok(i) = p.parse::<i32>() {
+                return i;
+            }
+        }
+
+        0
+    }
+
     pub fn get_chat_config(&self) -> Option<Chat> {
         if let Some(c) = self.root.get_child_characteristic("Chat") {
             return Some(Chat { root: c });

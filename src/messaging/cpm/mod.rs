@@ -28,6 +28,8 @@ use uuid::Uuid;
 
 use self::session::CPMSession;
 
+use super::ffi::RecipientType;
+
 const LOG_TAG: &str = "messaging";
 
 pub struct MessagingSessionHandle {
@@ -38,7 +40,8 @@ pub struct CPMMessageParam {
     message_type: String,
     message_content: String,
     recipient: String,
-    recipient_is_chatbot: bool,
+    recipient_type: RecipientType,
+    recipient_uri: String,
     message_result_callback: Arc<dyn Fn(u16, String) + Send + Sync>, // to-do: use FnOnce in CPMSession ?
 }
 
@@ -46,8 +49,9 @@ impl CPMMessageParam {
     pub fn new<F>(
         message_type: String,
         message_content: String,
-        recipient: String,
-        recipient_is_chatbot: bool,
+        recipient: &str,
+        recipient_type: &RecipientType,
+        recipient_uri: &str,
         message_result_callback: F,
     ) -> CPMMessageParam
     where
@@ -56,8 +60,9 @@ impl CPMMessageParam {
         CPMMessageParam {
             message_type,
             message_content,
-            recipient,
-            recipient_is_chatbot,
+            recipient: String::from(recipient),
+            recipient_type: RecipientType::from(recipient_type),
+            recipient_uri: String::from(recipient_uri),
             message_result_callback: Arc::new(message_result_callback),
         }
     }
@@ -66,8 +71,8 @@ impl CPMMessageParam {
 pub fn make_cpim_message_content_body(
     message_type: &str,
     message_content: &str,
-    recipient: &str,
-    recipient_is_chatbot: bool,
+    recipient_type: &RecipientType,
+    recipient_uri: &str,
     message_imdn_id: Uuid,
     public_user_identity: &str,
 ) -> Body {
@@ -85,7 +90,7 @@ pub fn make_cpim_message_content_body(
         format!("{}", content_body_length),
     ));
 
-    let cpim_body = Body::Message(MessageBody {
+    let cpim_content_body = Body::Message(MessageBody {
         headers: content_headers,
         body: Arc::new(Body::Raw(content_body)),
     });
@@ -97,7 +102,7 @@ pub fn make_cpim_message_content_body(
         cpim_headers.push(Header::new("To", "<sip:anonymous@anonymous.invalid>"));
     } else {
         cpim_headers.push(Header::new("From", format!("<{}>", public_user_identity)));
-        cpim_headers.push(Header::new("To", format!("<{}>", recipient)));
+        cpim_headers.push(Header::new("To", format!("<{}>", recipient_uri)));
     }
 
     let utc: DateTime<Local> = Local::now();
@@ -138,12 +143,12 @@ pub fn make_cpim_message_content_body(
     //     value: b"cpim <http://www.openmobilealliance.org/cpm/cpim>".to_vec(),
     // });
 
-    if recipient_is_chatbot {
+    if let RecipientType::Chatbot = recipient_type {
         cpim_headers.push(Header::new("NS", "maap <http://www.gsma.com/rcs/maap/>"));
     }
 
     Body::Message(MessageBody {
         headers: cpim_headers,
-        body: Arc::new(cpim_body),
+        body: Arc::new(cpim_content_body),
     })
 }

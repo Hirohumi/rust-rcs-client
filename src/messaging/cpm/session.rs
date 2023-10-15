@@ -75,6 +75,7 @@ use tokio::sync::oneshot;
 use uuid::Uuid;
 
 use crate::contact::ContactKnownIdentities;
+use crate::messaging::ffi::RecipientType;
 
 use super::session_invitation::{
     try_accept_hanging_invitation, try_accept_invitation, CPMSessionInvitation,
@@ -669,8 +670,8 @@ impl CPMSession {
                                 let body = make_cpim_message_content_body(
                                     &message.message_type,
                                     &message.message_content,
-                                    &message.recipient,
-                                    message.recipient_is_chatbot,
+                                    &message.recipient_type,
+                                    &message.recipient_uri,
                                     Uuid::new_v4(), // to-do: should be provided by user
                                     &public_user_identity,
                                 );
@@ -970,7 +971,8 @@ impl CPMSessionService {
         message_type: &str,
         message_content: &str,
         recipient: &str,
-        recipient_is_chatbot: bool,
+        recipient_type: &RecipientType,
+        recipient_uri: &str,
         message_result_callback: F,
         core: &Arc<SipCore>,
         // ctrl_itf: SipTransactionManagerControlInterface,
@@ -997,8 +999,9 @@ impl CPMSessionService {
                 let message = CPMMessageParam::new(
                     String::from(message_type),
                     String::from(message_content),
-                    String::from(recipient),
-                    recipient_is_chatbot,
+                    recipient,
+                    recipient_type,
+                    recipient_uri,
                     message_result_callback,
                 );
 
@@ -1024,8 +1027,9 @@ impl CPMSessionService {
                 let message = CPMMessageParam::new(
                     String::from(message_type),
                     String::from(message_content),
-                    String::from(recipient),
-                    recipient_is_chatbot,
+                    recipient,
+                    recipient_type,
+                    recipient_uri,
                     message_result_callback,
                 );
                 let message_tx = message_tx.clone();
@@ -1052,6 +1056,8 @@ impl CPMSessionService {
                 format!("msrp://{}:{}/{};tcp", &host, port, path_random)
             };
 
+            // to-do: accepted types for Group message and others
+
             let path = path.into_bytes();
 
             let msrp_info: MsrpInfo = MsrpInfo {
@@ -1066,7 +1072,7 @@ impl CPMSessionService {
                 path: &path,
                 inactive: false,
                 direction: MsrpDirection::SendReceive,
-                accept_types: if recipient_is_chatbot {
+                accept_types: if let RecipientType::Chatbot = recipient_type {
                     b"message/cpim"
                 } else {
                     b"message/cpim application/im-iscomposing+xm"
@@ -1076,7 +1082,7 @@ impl CPMSessionService {
                 } else {
                     MsrpSetupMethod::Passive
                 },
-                accept_wrapped_types: if recipient_is_chatbot {
+                accept_wrapped_types: if let RecipientType::Chatbot = recipient_type {
                     Some(b"multipart/mixed text/plain application/vnd.gsma.rcs-ft-http+xml application/vnd.gsma.rcspushlocation+xml message/imdn+xml application/vnd.gsma.botmessage.v1.0+json application/vnd.gsma.botsuggestion.v1.0+json application/commontemplate+xml")
                 } else {
                     Some(b"multipart/mixed text/plain application/vnd.gsma.rcs-ft-http+xml application/vnd.gsma.rcspushlocation+xml message/imdn+xml")
@@ -1115,7 +1121,7 @@ impl CPMSessionService {
 
                 invite_message.add_header(Header::new(
                     b"Contact",
-                    if recipient_is_chatbot {
+                    if let RecipientType::Chatbot = recipient_type {
                         format!("<{}>;+sip.instance=\"{}\";+g.3gpp.icsi-ref=\"urn%3Aurn-7%3A3gpp-service.ims.icsi.oma.cpm.session\";+g.3gpp.iari-ref=\"urn%3Aurn-7%3A3gpp-application.ims.iari.rcs.chatbot\";+g.gsma.rcs.botversion=\"#=1,#=2\"", contact_identity, instance_id)
                     } else {
                         format!("<{}>;+sip.instance=\"{}\";+g.3gpp.icsi-ref=\"urn%3Aurn-7%3A3gpp-service.ims.icsi.oma.cpm.session\"", contact_identity, instance_id)
@@ -1127,7 +1133,7 @@ impl CPMSessionService {
                     "*;+g.3gpp.icsi-ref=\"urn%3Aurn-7%3A3gpp-service.ims.icsi.oma.cpm.msg\"",
                 ));
 
-                if recipient_is_chatbot {
+                if let RecipientType::Chatbot = recipient_type {
                     invite_message.add_header(Header::new(b"Accept-Contact", "*;+g.3gpp.iari-ref=\"urn%3Aurn-7%3A3gpp-application.ims.iari.rcs.chatbot\";+g.gsma.rcs.botversion=\"#=1,#=2\";require;explicit"));
                 }
 
@@ -1206,8 +1212,9 @@ impl CPMSessionService {
                 let message = CPMMessageParam::new(
                     String::from(message_type),
                     String::from(message_content),
-                    String::from(recipient),
-                    recipient_is_chatbot,
+                    recipient,
+                    recipient_type,
+                    recipient_uri,
                     message_result_callback,
                 );
 
@@ -1485,7 +1492,7 @@ impl CPMSessionService {
                     transport,
                     CPMSessionInviteCallbacks {
                         // l_sdp,
-                        recipient_is_chatbot,
+                        recipient_type: RecipientType::from(recipient_type),
                         client_transaction_tx,
                         // message_result_callback: Box::new(message_result_callback),
                         // message_receive_listener: Arc::clone(&self.message_receive_listener),
@@ -1508,7 +1515,7 @@ impl CPMSessionService {
 
 struct CPMSessionInviteCallbacks {
     // l_sdp: Arc<Body>,
-    recipient_is_chatbot: bool,
+    recipient_type: RecipientType,
     client_transaction_tx:
         mpsc::Sender<Result<(SipMessage, CPMSessionInfo, Arc<Body>), (u16, String)>>,
     // client_transaction_tx: mpsc::Sender<mpsc::Sender<CPMMessageParam>>,
@@ -1527,12 +1534,17 @@ impl ClientTransactionCallbacks for CPMSessionInviteCallbacks {
             if l.status_code >= 200 && l.status_code < 300 {
                 if let Some(session_info) = get_cpm_session_info_from_message(&message, true) {
                     loop {
-                        if self.recipient_is_chatbot
-                            && !match session_info.cpm_contact.service_type {
-                                CPMServiceType::Chatbot => true,
-                                _ => false,
-                            }
-                        {
+                        let accepting_chatbot_session_is_forbidden =
+                            if let RecipientType::Chatbot = self.recipient_type {
+                                match session_info.cpm_contact.service_type {
+                                    CPMServiceType::Chatbot => false,
+                                    _ => true,
+                                }
+                            } else {
+                                false
+                            };
+
+                        if accepting_chatbot_session_is_forbidden {
                             status_code = 606;
                             reason_phrase = String::from("Not Acceptable");
                             break;

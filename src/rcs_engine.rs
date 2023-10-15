@@ -104,6 +104,7 @@ use crate::messaging::cpm::session::CPMSessionServiceWrapper;
 use crate::messaging::cpm::standalone_messaging::StandaloneMessagingServiceWrapper;
 use crate::messaging::cpm::standalone_messaging::{self, StandaloneMessagingService};
 use crate::messaging::cpm::MessagingSessionHandle;
+use crate::messaging::ffi::RecipientType;
 use crate::messaging::ft_http::config::FileTransferOverHTTPConfigs;
 use crate::messaging::ft_http::download_file;
 use crate::messaging::ft_http::upload_file;
@@ -1025,7 +1026,7 @@ impl RcsEngine {
         message_type: &str,
         message_content: &str,
         recipient: &str,
-        recipient_is_chatbot: bool,
+        recipient_type: RecipientType,
         message_result_callback: F,
         /* engine_itf: RcsEngineInterface, */ rt: &Arc<Runtime>,
     ) where
@@ -1055,11 +1056,12 @@ impl RcsEngine {
                 let recipient_supports_standalone = true;
 
                 // bool contact_is_group = (options & rcs_send_message_option_send_to_group) != 0;
-                let recipient_is_group = false;
+                // let recipient_is_group = false;
 
                 let messaging_config = &*self.messaging_config.lock().unwrap();
+                let mut recipient_uri = String::from(recipient);
 
-                if recipient_is_chatbot {
+                if let RecipientType::Chatbot = recipient_type {
                     if messaging_config.chatbot_msg_tech == 1
                         && messaging_config.chat_auth == 1
                         && recipient_supports_one_to_one
@@ -1081,9 +1083,19 @@ impl RcsEngine {
                     {
                         send_through_standalone_message_service = true;
                     }
-                } else if recipient_is_group {
+                } else if let RecipientType::Group = recipient_type {
                     if messaging_config.group_chat_auth == 1 {
                         send_through_group_chat_service = true;
+                    }
+                } else if let RecipientType::ResourceList = recipient_type {
+                    if messaging_config.standalone_msg_auth == 1 {
+                        // to-do: check max_one_to_many_recipients for limit
+                        if let Some(exploder_uri) = &messaging_config.exploder_uri {
+                            recipient_uri = String::from(exploder_uri);
+                        } else {
+                            recipient_uri = String::from("exploder@conf-factory");
+                        }
+                        send_through_standalone_message_service = true;
                     }
                 } else {
                     if messaging_config.chat_auth == 1 && recipient_supports_one_to_one {
@@ -1101,7 +1113,8 @@ impl RcsEngine {
                         message_type,
                         message_content,
                         recipient,
-                        recipient_is_chatbot,
+                        &recipient_type,
+                        &recipient_uri,
                         message_result_callback,
                         core,
                         rt,
@@ -1117,7 +1130,8 @@ impl RcsEngine {
                                 message_type,
                                 message_content,
                                 recipient,
-                                recipient_is_chatbot,
+                                &recipient_type,
+                                &recipient_uri,
                                 message_result_callback,
                                 core,
                                 rt,
@@ -1127,7 +1141,8 @@ impl RcsEngine {
                                 message_type,
                                 message_content,
                                 recipient,
-                                recipient_is_chatbot,
+                                &recipient_type,
+                                &recipient_uri,
                                 message_result_callback,
                                 core,
                                 transport,
@@ -1168,11 +1183,14 @@ impl RcsEngine {
                 if sender_service_type == 1 {
                     let core = Arc::clone(&self.core);
 
+                    let recipient_type = RecipientType::Contact;
+
                     standalone_messaging::send_message(
                         "message/imdn",
                         imdn_content,
                         sender_uri,
-                        false,
+                        &recipient_type, // to-do: support IMDN in group chat
+                        sender_uri,
                         move |status_code, reason_phrase| {
                             send_imdn_report_result_callback(status_code, reason_phrase);
                         },

@@ -75,6 +75,7 @@ use rust_rcs_core::util::raw_string::{StrEq, StrFind};
 // use rust_rcs_core::util::timer::Timer;
 
 use crate::chat_bot::cpim::GetBotInfo;
+use crate::messaging::ffi::RecipientType;
 
 use super::session::{get_cpm_session_info_from_message, CPMSessionInfo, UpdateMessageCallbacks};
 use super::sip::cpm_accept_contact::CPMAcceptContact;
@@ -663,7 +664,8 @@ impl StandaloneMessagingService {
         message_type: &str,
         message_content: &str,
         recipient: &str,
-        recipient_is_chatbot: bool,
+        recipient_type: &RecipientType,
+        recipient_uri: &str,
         message_result_callback: MRF,
         core: &Arc<SipCore>,
         rt: &Arc<Runtime>,
@@ -711,7 +713,8 @@ impl StandaloneMessagingService {
                 if let Some((transport, public_user_identity, instance_id)) =
                     core.get_default_public_identity()
                 {
-                    let mut invite_message = SipMessage::new_request(INVITE, recipient.as_bytes());
+                    let mut invite_message =
+                        SipMessage::new_request(INVITE, recipient_uri.as_bytes());
 
                     invite_message.add_header(Header::new(
                         b"Call-ID",
@@ -724,7 +727,7 @@ impl StandaloneMessagingService {
 
                     invite_message.add_header(Header::new(b"CSeq", b"1 INVITE"));
 
-                    invite_message.add_header(Header::new(b"Contact", if recipient_is_chatbot {
+                    invite_message.add_header(Header::new(b"Contact", if let RecipientType::Chatbot = recipient_type {
                         format!("<{}>;+sip.instance=\"{}\";+g.3gpp.icsi-ref=\"urn%3Aurn-7%3A3gpp-service.ims.icsi.oma.cpm.largemsg\";+g.3gpp.iari-ref=\"urn%3Aurn-7%3A3gpp-application.ims.iari.rcs.chatbot\";+g.gsma.rcs.botversion=\"#=1,#=2\"", &public_user_identity, &instance_id)
                     } else {
                         format!("<{}>;+sip.instance=\"{}\";+g.3gpp.icsi-ref=\"urn%3Aurn-7%3A3gpp-service.ims.icsi.oma.cpm.largemsg\"", &public_user_identity, &instance_id)
@@ -736,7 +739,9 @@ impl StandaloneMessagingService {
                         invite_message.add_header(Header::new(b"Accept-Contact", b"*;+g.3gpp.iari-ref=\"urn%3Aurn-7%3A3gpp-application.ims.iari.rcs.fthttp\";require;explicit"));
                     }
 
-                    if recipient_is_chatbot {
+                    // to-do: build up for other recipient types
+
+                    if let RecipientType::Chatbot = recipient_type {
                         invite_message.add_header(Header::new(b"Accept-Contact", b"*;+g.3gpp.iari-ref=\"urn%3Aurn-7%3A3gpp-application.ims.iari.rcs.chatbot.sa\";+g.gsma.rcs.botversion=\"#=1,#=2\";require;explicit"));
                     }
 
@@ -764,15 +769,46 @@ impl StandaloneMessagingService {
                     let cpim_body = make_cpim_message_content_body(
                         message_type,
                         "",
-                        recipient,
-                        recipient_is_chatbot,
+                        &recipient_type,
+                        recipient_uri,
                         message_imdn_id,
                         &public_user_identity,
                     );
 
                     let boundary = create_raw_alpha_numeric_string(16);
                     let boundary_ = String::from_utf8_lossy(&boundary);
-                    let mut parts = Vec::with_capacity(2);
+                    let mut parts =
+                        Vec::with_capacity(if let RecipientType::ResourceList = recipient_type {
+                            3
+                        } else {
+                            2
+                        });
+
+                    if let RecipientType::ResourceList = recipient_type {
+                        let resource_list_body: Vec<u8> = recipient.as_bytes().to_vec();
+
+                        let mut resource_list_headers = Vec::new();
+
+                        let resource_list_length = resource_list_body.len();
+
+                        resource_list_headers.push(Header::new(
+                            b"Content-Type",
+                            b"application/resource-lists+xml",
+                        ));
+                        resource_list_headers
+                            .push(Header::new(b"Content-Disposition", b"recipient-list"));
+                        resource_list_headers.push(Header::new(
+                            b"Content-Length",
+                            format!("{}", resource_list_length),
+                        ));
+
+                        let resource_list_body = Body::Message(MessageBody {
+                            headers: resource_list_headers,
+                            body: Arc::new(Body::Raw(resource_list_body)),
+                        });
+
+                        parts.push(Arc::new(resource_list_body));
+                    }
 
                     let mut cpim_part_headers = Vec::new();
                     cpim_part_headers.push(Header::new(b"Content-Type", b"message/cpim"));
@@ -831,8 +867,9 @@ impl StandaloneMessagingService {
                     let message = CPMMessageParam::new(
                         String::from(message_type),
                         String::from(message_content),
-                        String::from(recipient),
-                        recipient_is_chatbot,
+                        recipient,
+                        recipient_type,
+                        recipient_uri,
                         message_result_callback,
                     );
 
@@ -885,8 +922,8 @@ impl StandaloneMessagingService {
                                                     let message_body = make_cpim_message_content_body(
                                                         &message.message_type,
                                                         &message.message_content,
-                                                        &message.recipient,
-                                                        message.recipient_is_chatbot,
+                                                        &message.recipient_type,
+                                                        &message.recipient_uri,
                                                         message_imdn_id,
                                                         &public_user_identity,
                                                     );
@@ -997,7 +1034,7 @@ impl StandaloneMessagingService {
                         invite_message,
                         &transport,
                         StandaloneLargeModeInviteCallbacks {
-                            recipient_is_chatbot,
+                            recipient_type: RecipientType::from(recipient_type),
                             client_transaction_tx,
                             rt: Arc::clone(rt),
                         },
@@ -1018,7 +1055,7 @@ impl StandaloneMessagingService {
 }
 
 struct StandaloneLargeModeInviteCallbacks {
-    recipient_is_chatbot: bool,
+    recipient_type: RecipientType,
     client_transaction_tx:
         mpsc::Sender<Result<(SipMessage, CPMSessionInfo, Arc<Body>), (u16, String)>>,
     rt: Arc<Runtime>,
@@ -1034,12 +1071,17 @@ impl ClientTransactionCallbacks for StandaloneLargeModeInviteCallbacks {
             if l.status_code >= 200 && l.status_code < 300 {
                 if let Some(session_info) = get_cpm_session_info_from_message(&message, true) {
                     loop {
-                        if self.recipient_is_chatbot
-                            && !match session_info.cpm_contact.service_type {
-                                CPMServiceType::Chatbot => true,
-                                _ => false,
-                            }
-                        {
+                        let accepting_chatbot_session_is_forbidden =
+                            if let RecipientType::Chatbot = self.recipient_type {
+                                match session_info.cpm_contact.service_type {
+                                    CPMServiceType::Chatbot => false,
+                                    _ => true,
+                                }
+                            } else {
+                                false
+                            };
+
+                        if accepting_chatbot_session_is_forbidden {
                             status_code = 606;
                             reason_phrase = String::from("Not Acceptable");
                             break;
@@ -1931,7 +1973,8 @@ pub fn send_message<F>(
     message_type: &str,
     message_content: &str,
     recipient: &str,
-    recipient_is_chatbot: bool,
+    recipient_type: &RecipientType,
+    recipient_uri: &str,
     message_result_callback: F,
     core: Arc<SipCore>,
     transport: &Arc<SipTransport>,
@@ -1940,7 +1983,7 @@ pub fn send_message<F>(
 ) where
     F: FnOnce(u16, String) + Send + Sync + 'static,
 {
-    let mut req_message = SipMessage::new_request(MESSAGE, recipient.as_bytes());
+    let mut req_message = SipMessage::new_request(MESSAGE, recipient_uri.as_bytes());
 
     req_message.add_header(Header::new(
         b"Call-ID",
@@ -1972,7 +2015,7 @@ pub fn send_message<F>(
         req_message.add_header(Header::new(b"Accept-Contact", b"*;+g.3gpp.iari-ref=\"urn%3Aurn-7%3A3gpp-application.ims.iari.rcs.fthttp\";require;explicit"));
     }
 
-    if recipient_is_chatbot {
+    if let RecipientType::Chatbot = recipient_type {
         req_message.add_header(Header::new(b"Accept-Contact", b"*;+g.3gpp.iari-ref=\"urn%3Aurn-7%3A3gpp-application.ims.iari.rcs.chatbot.sa\";+g.gsma.rcs.botversion=\"#=1,#=2\";require;explicit"));
     }
 
@@ -1994,34 +2037,84 @@ pub fn send_message<F>(
         ),
     ));
 
-    req_message.add_header(Header::new(
-        b"P-Preferred-Service",
-        b"urn:urn-7:3gpp-service.ims.icsi.oma.cpm.msg",
-    ));
+    if let RecipientType::ResourceList = recipient_type {
+        req_message.add_header(Header::new(b"Require", b"recipient-list-message"));
+
+        req_message.add_header(Header::new(
+            b"P-Preferred-Service",
+            b"urn:urn-7:3gpp-service.ims.icsi.oma.cpm.msg.group",
+        ));
+    } else {
+        req_message.add_header(Header::new(
+            b"P-Preferred-Service",
+            b"urn:urn-7:3gpp-service.ims.icsi.oma.cpm.msg",
+        ));
+    }
 
     req_message.add_header(Header::new(
         b"P-Preferred-Identity",
         String::from(public_user_identity),
     ));
 
-    let sip_body = make_cpim_message_content_body(
+    let cpim_body = make_cpim_message_content_body(
         message_type,
         message_content,
-        recipient,
-        recipient_is_chatbot,
+        &recipient_type,
+        recipient_uri,
         Uuid::new_v4(),
         public_user_identity,
     );
 
-    let sip_body_len = sip_body.estimated_size();
+    if let RecipientType::ResourceList = recipient_type {
+        let boundary = create_raw_alpha_numeric_string(16);
+        let boundary_ = String::from_utf8_lossy(&boundary);
+        let mut parts = Vec::with_capacity(2);
 
-    // let c = CPIMMessage::new(&[], cpim_headers, body);
+        let resource_list_body: Vec<u8> = recipient.as_bytes().to_vec();
 
-    req_message.set_body(Arc::new(sip_body));
+        let mut resource_list_headers = Vec::new();
 
-    req_message.add_header(Header::new(b"Content-Type", b"message/cpim"));
+        let resource_list_length = resource_list_body.len();
 
-    req_message.add_header(Header::new(b"Content-Length", format!("{}", sip_body_len)));
+        resource_list_headers.push(Header::new(
+            b"Content-Type",
+            b"application/resource-lists+xml",
+        ));
+        resource_list_headers.push(Header::new(b"Content-Disposition", b"recipient-list"));
+        resource_list_headers.push(Header::new(
+            b"Content-Length",
+            format!("{}", resource_list_length),
+        ));
+
+        let resource_list_body = Body::Message(MessageBody {
+            headers: resource_list_headers,
+            body: Arc::new(Body::Raw(resource_list_body)),
+        });
+
+        parts.push(Arc::new(resource_list_body));
+        parts.push(Arc::new(cpim_body));
+
+        req_message.add_header(Header::new(
+            b"Content-Type",
+            format!("multipart/mixed;boundary={}", boundary_),
+        ));
+
+        let sip_body = Body::Multipart(MultipartBody { boundary, parts });
+
+        let sip_body_len = sip_body.estimated_size();
+
+        req_message.set_body(Arc::new(sip_body));
+
+        req_message.add_header(Header::new(b"Content-Length", format!("{}", sip_body_len)));
+    } else {
+        let sip_body_len = cpim_body.estimated_size();
+
+        req_message.set_body(Arc::new(cpim_body));
+
+        req_message.add_header(Header::new(b"Content-Type", b"message/cpim"));
+
+        req_message.add_header(Header::new(b"Content-Length", format!("{}", sip_body_len)));
+    };
 
     let (client_transaction_tx, mut client_transaction_rx) = mpsc::channel(1);
 

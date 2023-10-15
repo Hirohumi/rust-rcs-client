@@ -89,8 +89,13 @@ typedef void (*message_result_callback) (uint16_t status_code, const char *reaso
 
 void message_result_callback_context_release(void *context);
 
+#define recipient_type_contact 0
+#define recipient_type_chatbot 1
+#define recipient_type_group 2
+#define recipient_type_resource_list 3
+
 extern void rcs_client_send_message(struct rcs_runtime *runtime, struct rcs_client *client, const char *message_type, const char *message_content, const char *recipient,
-                                bool recipient_is_chatbot,
+                                int8_t recipient_type,
                                 message_result_callback cb, void *context);
 
 typedef void (*send_imdn_report_result_callback) (uint16_t status_code, const char *reason_phrase, void *context);
