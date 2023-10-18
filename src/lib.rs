@@ -707,9 +707,11 @@ pub unsafe extern "C" fn rcs_client_upload_file(
     client: *mut RcsClient,
     tid: *const c_char,
     file_path: *const c_char,
+    file_name: *const c_char,
     file_mime: *const c_char,
     file_hash: *const c_char,
     thumbnail_path: *const c_char,
+    thumbnail_name: *const c_char,
     thumbnail_mime: *const c_char,
     thumbnail_hash: *const c_char,
     cb: Option<UploadFileResultCallback>,
@@ -732,6 +734,7 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                 let tid = CStr::from_ptr(tid).to_string_lossy();
 
                 let file_path = CStr::from_ptr(file_path).to_string_lossy();
+                let file_name = CStr::from_ptr(file_name).to_string_lossy();
                 let file_mime = CStr::from_ptr(file_mime).to_string_lossy();
                 let file_hash = if file_hash.is_null() {
                     None
@@ -743,6 +746,12 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                     None
                 } else {
                     Some(CStr::from_ptr(thumbnail_path).to_string_lossy())
+                };
+
+                let thumbnail_name = if thumbnail_name.is_null() {
+                    None
+                } else {
+                    Some(CStr::from_ptr(thumbnail_name).to_string_lossy())
                 };
 
                 let thumbnail_mime = if thumbnail_mime.is_null() {
@@ -762,9 +771,11 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                 client.engine.upload_file(
                     &tid,
                     &file_path,
+                    &file_name,
                     &file_mime,
                     file_hash.as_deref(),
                     thumbnail_path.as_deref(),
+                    thumbnail_name.as_deref(),
                     thumbnail_mime.as_deref(),
                     thumbnail_hash.as_deref(),
                     msisdn,

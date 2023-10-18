@@ -727,6 +727,16 @@ impl StandaloneMessagingService {
 
                     invite_message.add_header(Header::new(b"CSeq", b"1 INVITE"));
 
+                    let tag = rand::create_raw_alpha_numeric_string(8);
+                    let tag = String::from_utf8_lossy(&tag);
+
+                    invite_message.add_header(Header::new(
+                        b"From",
+                        format!("<{}>;tag={}", public_user_identity, tag),
+                    ));
+                
+                    invite_message.add_header(Header::new(b"To", format!("<{}>", recipient_uri)));
+
                     invite_message.add_header(Header::new(b"Contact", if let RecipientType::Chatbot = recipient_type {
                         format!("<{}>;+sip.instance=\"{}\";+g.3gpp.icsi-ref=\"urn%3Aurn-7%3A3gpp-service.ims.icsi.oma.cpm.largemsg\";+g.3gpp.iari-ref=\"urn%3Aurn-7%3A3gpp-application.ims.iari.rcs.chatbot\";+g.gsma.rcs.botversion=\"#=1,#=2\"", &public_user_identity, &instance_id)
                     } else {
@@ -2004,7 +2014,7 @@ pub fn send_message<F>(
         format!("<{}>;tag={}", public_user_identity, tag),
     ));
 
-    req_message.add_header(Header::new(b"To", format!("<{}>", recipient)));
+    req_message.add_header(Header::new(b"To", format!("<{}>", recipient_uri)));
 
     req_message.add_header(Header::new(
         b"Accept-Contact",

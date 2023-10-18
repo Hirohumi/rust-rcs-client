@@ -1214,9 +1214,11 @@ impl RcsEngine {
         &self,
         tid: &str,
         file_path: &str,
+        file_name: &str,
         file_mime: &str,
         file_hash: Option<&str>,
         thumbnail_path: Option<&str>,
+        thumbnail_name: Option<&str>,
         thumbnail_mime: Option<&str>,
         thumbnail_hash: Option<&str>,
         msisdn: Option<&str>,
@@ -1243,6 +1245,7 @@ impl RcsEngine {
                         };
 
                         let file_path = String::from(file_path);
+                        let file_name = String::from(file_name);
                         let file_mime = String::from(file_mime);
                         let file_hash = match file_hash {
                             Some(file_hash) => Some(String::from(file_hash)),
@@ -1251,6 +1254,11 @@ impl RcsEngine {
 
                         let thumbnail_path = match thumbnail_path {
                             Some(thumbnail_path) => Some(String::from(thumbnail_path)),
+                            None => None,
+                        };
+
+                        let thumbnail_name = match thumbnail_name {
+                            Some(thumbnail_name) => Some(String::from(thumbnail_name)),
                             None => None,
                         };
 
@@ -1267,15 +1275,17 @@ impl RcsEngine {
                         rt.spawn(async move {
                             let file: FileInfo<'_> = FileInfo {
                                 path: &file_path,
+                                name: &file_name,
                                 mime: &file_mime,
                                 hash: file_hash.as_deref(),
                             };
 
                             let thumbnail =
-                                match (thumbnail_path.as_deref(), thumbnail_mime.as_deref()) {
-                                    (Some(thumbnail_path), Some(thumbnail_mime)) => {
+                                match (thumbnail_path.as_deref(), thumbnail_name.as_deref(), thumbnail_mime.as_deref()) {
+                                    (Some(thumbnail_path), Some(thumbnail_name), Some(thumbnail_mime)) => {
                                         Some(FileInfo {
                                             path: thumbnail_path,
+                                            name: thumbnail_name,
                                             mime: thumbnail_mime,
                                             hash: thumbnail_hash.as_deref(),
                                         })

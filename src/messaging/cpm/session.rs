@@ -1117,7 +1117,7 @@ impl CPMSessionService {
                     format!("<{}>;tag={}", contact_identity, tag),
                 ));
 
-                invite_message.add_header(Header::new(b"To", format!("<{}>", recipient)));
+                invite_message.add_header(Header::new(b"To", format!("<{}>", recipient_uri)));
 
                 invite_message.add_header(Header::new(
                     b"Contact",

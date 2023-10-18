@@ -290,7 +290,13 @@ async fn resume_upload_put_inner(
             }
 
             let file_size = match usize::try_from(file_size) {
-                Ok(file_size) => file_size,
+                Ok(file_size) => {
+                    if file_size > 0 {
+                        file_size
+                    } else {
+                        return Err(FileUploadError::IO);
+                    }
+                },
                 Err(_) => return Err(FileUploadError::IO),
             };
 
@@ -732,12 +738,6 @@ async fn upload_file_actual_content_post_inner(
 
     let thumbnail_payload = match &thumbnail {
         Some(thumbnail) => {
-            let file_name = if let Some(sep) = thumbnail.path.rfind(MAIN_SEPARATOR) {
-                &thumbnail.path[sep + MAIN_SEPARATOR.len_utf8()..]
-            } else {
-                thumbnail.path
-            };
-
             let mut file_size = 0;
             if let Ok(mut f) = File::open(thumbnail.path) {
                 if let Ok(meta) = f.metadata() {
@@ -750,7 +750,13 @@ async fn upload_file_actual_content_post_inner(
             }
 
             let stream_size = match usize::try_from(file_size) {
-                Ok(file_size) => file_size,
+                Ok(file_size) => {
+                    if file_size > 0 {
+                        file_size
+                    } else {
+                        return Err(FileUploadError::IO);
+                    }
+                },
                 Err(_) => return Err(FileUploadError::IO),
             };
 
@@ -758,7 +764,7 @@ async fn upload_file_actual_content_post_inner(
                 headers: [
                     Header::new(
                         "Content-Disposition",
-                        format!("form-data; name=\"Thumbnail\"; filename=\"{}\"", file_name),
+                        format!("form-data; name=\"Thumbnail\"; filename=\"{}\"", thumbnail.name),
                     ),
                     Header::new("Content-Type", String::from(thumbnail.mime)),
                     Header::new("Content-Transfer-Encoding", "binary"),
@@ -778,12 +784,6 @@ async fn upload_file_actual_content_post_inner(
         None => None,
     };
 
-    let file_name = if let Some(sep) = file.path.rfind(MAIN_SEPARATOR) {
-        &file.path[sep + MAIN_SEPARATOR.len_utf8()..]
-    } else {
-        file.path
-    };
-
     let mut file_size = 0;
     if let Ok(mut f) = File::open(file.path) {
         if let Ok(meta) = f.metadata() {
@@ -796,7 +796,13 @@ async fn upload_file_actual_content_post_inner(
     }
 
     let stream_size = match usize::try_from(file_size) {
-        Ok(file_size) => file_size,
+        Ok(file_size) => {
+            if file_size > 0 {
+                file_size
+            } else {
+                return Err(FileUploadError::IO);
+            }
+        },
         Err(_) => return Err(FileUploadError::IO),
     };
 
@@ -804,7 +810,7 @@ async fn upload_file_actual_content_post_inner(
         headers: [
             Header::new(
                 "Content-Disposition",
-                format!("form-data; name=\"File\"; filename=\"{}\"", file_name),
+                format!("form-data; name=\"File\"; filename=\"{}\"", file.name),
             ),
             Header::new("Content-Type", String::from(file.mime)),
             Header::new("Content-Transfer-Encoding", "binary"),
@@ -1096,6 +1102,7 @@ async fn upload_file_inner(
 
 pub struct FileInfo<'a> {
     pub path: &'a str,
+    pub name: &'a str,
     pub mime: &'a str,
     pub hash: Option<&'a str>,
 }

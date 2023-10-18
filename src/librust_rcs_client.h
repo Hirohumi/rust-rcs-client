@@ -111,8 +111,8 @@ typedef void (*upload_file_result_callback) (uint16_t status_code, const char *r
 void upload_file_result_callback_context_release(void *context);
 
 extern void rcs_client_upload_file(struct rcs_runtime *runtime, struct rcs_client *client, const char *tid,
-                                const char *file_path, const char *file_mime, const char *file_hash,
-                                const char *thumbnail_path, const char *thumbnail_mime, const char *thumbnail_hash,
+                                const char *file_path, const char *file_name, const char *file_mime, const char *file_hash,
+                                const char *thumbnail_path, const char *thumbnail_name, const char *thumbnail_mime, const char *thumbnail_hash,
                                 upload_file_result_callback cb, void *context);
 
 typedef void (*download_file_result_callback) (uint16_t status_code, const char *reason_phrase, void *context);
