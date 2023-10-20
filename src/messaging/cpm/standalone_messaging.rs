@@ -734,7 +734,7 @@ impl StandaloneMessagingService {
                         b"From",
                         format!("<{}>;tag={}", public_user_identity, tag),
                     ));
-                
+
                     invite_message.add_header(Header::new(b"To", format!("<{}>", recipient_uri)));
 
                     invite_message.add_header(Header::new(b"Contact", if let RecipientType::Chatbot = recipient_type {

@@ -120,7 +120,7 @@ typedef void (*download_file_result_callback) (uint16_t status_code, const char 
 void download_file_result_callback_context_release(void *context);
 
 extern void rcs_client_download_file(struct rcs_runtime *runtime, struct rcs_client *client,
-                                const char *file_uri, const char *download_path, size_t start, size_t total,
+                                const char *file_uri, const char *download_path, uint32_t start, int32_t total,
                                 download_file_result_callback cb, void *context);
 
 extern void destroy_rcs_messaging_session(struct rcs_messaging_session *session);

@@ -126,7 +126,7 @@ async fn download_file_inner(
     file_uri: &str,
     download_path: &str,
     start: usize,
-    total: usize,
+    total: Option<usize>,
     msisdn: Option<&str>,
     http_client: &Arc<HttpClient>,
     gba_context: &Arc<GbaContext>,
@@ -182,10 +182,17 @@ async fn download_file_inner(
             }
 
             if start > 0 {
-                req.headers.push(Header::new(
-                    b"Range",
-                    format!("bytes={}-{}", start, total - 1),
-                ));
+                if let Some(total) = total {
+                    if total > start {
+                        req.headers.push(Header::new(
+                            b"Range",
+                            format!("bytes={}-{}", start, total - 1),
+                        ));
+                    }
+                } else {
+                    req.headers
+                        .push(Header::new(b"Range", format!("bytes={}-", start)));
+                }
             }
 
             if let Ok((resp, resp_stream)) = conn.send(req).await {
@@ -262,11 +269,13 @@ async fn download_file_inner(
                                             break;
                                         }
                                     }
+
                                     platform_log(
                                         LOG_TAG,
-                                        "file range is inconsistent with provided value",
+                                        "underlying file size is inconsistent with provided value",
                                     );
                                 }
+
                                 Err(e) => {
                                     platform_log(LOG_TAG, format!("file seek error: {}", e));
                                 }
@@ -280,10 +289,21 @@ async fn download_file_inner(
                         match copy_buf(&mut resp_stream, &mut f).await {
                             Ok(i) => {
                                 platform_log(LOG_TAG, format!("bytes copied {}", i));
-                                if let Ok(i) = usize::try_from(i) {
-                                    if start + i == total {
-                                        return Ok(());
+                                let download_size_verified = if let Some(total) = total {
+                                    if let Ok(i) = usize::try_from(i) {
+                                        if start + i == total {
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    } else {
+                                        false
                                     }
+                                } else {
+                                    true
+                                };
+                                if download_size_verified {
+                                    return Ok(());
                                 }
                                 platform_log(
                                     LOG_TAG,
@@ -355,7 +375,7 @@ pub fn download_file<'a, 'b: 'a>(
     file_uri: &'b str,
     download_path: &'b str,
     start: usize,
-    total: usize,
+    total: Option<usize>,
     msisdn: Option<&'b str>,
     http_client: &'b Arc<HttpClient>,
     gba_context: &'b Arc<GbaContext>,

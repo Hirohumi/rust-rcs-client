@@ -296,7 +296,7 @@ async fn resume_upload_put_inner(
                     } else {
                         return Err(FileUploadError::IO);
                     }
-                },
+                }
                 Err(_) => return Err(FileUploadError::IO),
             };
 
@@ -756,7 +756,7 @@ async fn upload_file_actual_content_post_inner(
                     } else {
                         return Err(FileUploadError::IO);
                     }
-                },
+                }
                 Err(_) => return Err(FileUploadError::IO),
             };
 
@@ -764,7 +764,10 @@ async fn upload_file_actual_content_post_inner(
                 headers: [
                     Header::new(
                         "Content-Disposition",
-                        format!("form-data; name=\"Thumbnail\"; filename=\"{}\"", thumbnail.name),
+                        format!(
+                            "form-data; name=\"Thumbnail\"; filename=\"{}\"",
+                            thumbnail.name
+                        ),
                     ),
                     Header::new("Content-Type", String::from(thumbnail.mime)),
                     Header::new("Content-Transfer-Encoding", "binary"),
@@ -802,7 +805,7 @@ async fn upload_file_actual_content_post_inner(
             } else {
                 return Err(FileUploadError::IO);
             }
-        },
+        }
         Err(_) => return Err(FileUploadError::IO),
     };
 

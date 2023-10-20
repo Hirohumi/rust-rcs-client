@@ -1280,18 +1280,23 @@ impl RcsEngine {
                                 hash: file_hash.as_deref(),
                             };
 
-                            let thumbnail =
-                                match (thumbnail_path.as_deref(), thumbnail_name.as_deref(), thumbnail_mime.as_deref()) {
-                                    (Some(thumbnail_path), Some(thumbnail_name), Some(thumbnail_mime)) => {
-                                        Some(FileInfo {
-                                            path: thumbnail_path,
-                                            name: thumbnail_name,
-                                            mime: thumbnail_mime,
-                                            hash: thumbnail_hash.as_deref(),
-                                        })
-                                    }
-                                    _ => None,
-                                };
+                            let thumbnail = match (
+                                thumbnail_path.as_deref(),
+                                thumbnail_name.as_deref(),
+                                thumbnail_mime.as_deref(),
+                            ) {
+                                (
+                                    Some(thumbnail_path),
+                                    Some(thumbnail_name),
+                                    Some(thumbnail_mime),
+                                ) => Some(FileInfo {
+                                    path: thumbnail_path,
+                                    name: thumbnail_name,
+                                    mime: thumbnail_mime,
+                                    hash: thumbnail_hash.as_deref(),
+                                }),
+                                _ => None,
+                            };
 
                             match upload_file(
                                 &ft_http_service,
@@ -1338,7 +1343,7 @@ impl RcsEngine {
         file_uri: &str,
         download_path: &str,
         start: usize,
-        total: usize,
+        total: Option<usize>,
         msisdn: Option<&str>,
         http_client: Arc<HttpClient>,
         gba_context: Arc<GbaContext>,

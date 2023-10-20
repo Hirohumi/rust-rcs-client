@@ -827,8 +827,8 @@ pub unsafe extern "C" fn rcs_client_download_file(
     client: *mut RcsClient,
     file_uri: *const c_char,
     download_path: *const c_char,
-    start: usize,
-    total: usize,
+    start: u32,
+    total: i32,
     cb: Option<DownloadFileResultCallback>,
     cb_context: *mut DownloadFileResultCallbackContext,
 ) {
@@ -849,29 +849,41 @@ pub unsafe extern "C" fn rcs_client_download_file(
                 let file_uri = CStr::from_ptr(file_uri).to_string_lossy();
                 let download_path = CStr::from_ptr(download_path).to_string_lossy();
 
-                let cb_context_ = Arc::new(Mutex::new(cb_context));
-
-                client.engine.download_file(
-                    &file_uri,
-                    &download_path,
-                    start,
-                    total,
-                    msisdn,
-                    http_client,
-                    gba_context,
-                    security_context,
-                    rt,
-                    move |status_code, reason_phrase| {
-                        if let Some(cb) = cb {
-                            let reason_phrase = CString::new(reason_phrase).unwrap();
-                            let cb_context = cb_context_.lock().unwrap();
-                            let cb_context_ptr = cb_context.0.as_ptr();
-                            cb(status_code, reason_phrase.as_ptr(), cb_context_ptr);
+                if let Ok(start) = usize::try_from(start) {
+                    let total = if total > 0 {
+                        if let Ok(total) = usize::try_from(total) {
+                            Some(total)
+                        } else {
+                            None
                         }
-                    },
-                );
+                    } else {
+                        None
+                    };
 
-                return;
+                    let cb_context_ = Arc::new(Mutex::new(cb_context));
+
+                    client.engine.download_file(
+                        &file_uri,
+                        &download_path,
+                        start,
+                        total,
+                        msisdn,
+                        http_client,
+                        gba_context,
+                        security_context,
+                        rt,
+                        move |status_code, reason_phrase| {
+                            if let Some(cb) = cb {
+                                let reason_phrase = CString::new(reason_phrase).unwrap();
+                                let cb_context = cb_context_.lock().unwrap();
+                                let cb_context_ptr = cb_context.0.as_ptr();
+                                cb(status_code, reason_phrase.as_ptr(), cb_context_ptr);
+                            }
+                        },
+                    );
+
+                    return;
+                }
             }
         }
     }
