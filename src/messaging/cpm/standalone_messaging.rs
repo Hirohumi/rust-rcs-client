@@ -849,7 +849,7 @@ impl StandaloneMessagingService {
 
                     invite_message.add_header(Header::new(
                         b"Content-Type",
-                        format!("multipart/mixed;boundary={}", boundary_),
+                        format!("multipart/mixed; boundary={}", boundary_),
                     ));
 
                     let multipart = Body::Multipart(MultipartBody { boundary, parts });
@@ -2082,31 +2082,43 @@ pub fn send_message<F>(
 
         let resource_list_body: Vec<u8> = recipient.as_bytes().to_vec();
 
-        let mut resource_list_headers = Vec::new();
+        let mut resource_list_body_headers = Vec::with_capacity(2);
 
         let resource_list_length = resource_list_body.len();
 
-        resource_list_headers.push(Header::new(
+        resource_list_body_headers.push(Header::new(
             b"Content-Type",
             b"application/resource-lists+xml",
         ));
-        resource_list_headers.push(Header::new(b"Content-Disposition", b"recipient-list"));
-        resource_list_headers.push(Header::new(
+        resource_list_body_headers.push(Header::new(b"Content-Disposition", b"recipient-list"));
+        resource_list_body_headers.push(Header::new(
             b"Content-Length",
             format!("{}", resource_list_length),
         ));
 
-        let resource_list_body = Body::Message(MessageBody {
-            headers: resource_list_headers,
+        let resource_list_body_part = Body::Message(MessageBody {
+            headers: resource_list_body_headers,
             body: Arc::new(Body::Raw(resource_list_body)),
         });
 
-        parts.push(Arc::new(resource_list_body));
+        let mut cpim_body_headers = Vec::with_capacity(2);
+
+        let cpim_body_len = cpim_body.estimated_size();
+
+        cpim_body_headers.push(Header::new(b"Content-Type", "message/cpim"));
+        cpim_body_headers.push(Header::new(b"Content-Length", format!("{}", cpim_body_len)));
+
+        let cpim_body_part = Body::Message(MessageBody {
+            headers: cpim_body_headers,
+            body: cpim_body,
+        });
+
+        parts.push(Arc::new(resource_list_body_part));
         parts.push(Arc::new(cpim_body));
 
         req_message.add_header(Header::new(
             b"Content-Type",
-            format!("multipart/mixed;boundary={}", boundary_),
+            format!("multipart/mixed; boundary={}", boundary_),
         ));
 
         let sip_body = Body::Multipart(MultipartBody { boundary, parts });

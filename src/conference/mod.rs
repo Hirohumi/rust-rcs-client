@@ -313,7 +313,7 @@ impl MultiConferenceServiceV1 {
 
             invite_message.add_header(Header::new(
                 b"Content-Type",
-                format!("multipart/mixed;boundary={}", boundary_),
+                format!("multipart/mixed; boundary={}", boundary_),
             ));
 
             let multipart = Body::Multipart(MultipartBody { boundary, parts });
