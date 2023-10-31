@@ -123,13 +123,12 @@ pub fn make_cpim_message_content_body(
         ),
     ));
 
-    // to-do: it is okay to not ask for delivery notification
-    if !message_type.eq("message/imdn") {
-        cpim_headers.push(Header::new(
-            "imdn.Disposition-Notification",
-            "positive-delivery",
-        ));
-    }
+    // if !message_type.eq("message/imdn") {
+    //     cpim_headers.push(Header::new(
+    //         "imdn.Disposition-Notification",
+    //         "positive-delivery",
+    //     ));
+    // }
 
     cpim_headers.push(Header::new(
         "NS",
