@@ -2110,11 +2110,11 @@ pub fn send_message<F>(
 
         let cpim_body_part = Body::Message(MessageBody {
             headers: cpim_body_headers,
-            body: cpim_body,
+            body: Arc::new(cpim_body),
         });
 
         parts.push(Arc::new(resource_list_body_part));
-        parts.push(Arc::new(cpim_body));
+        parts.push(Arc::new(cpim_body_part));
 
         req_message.add_header(Header::new(
             b"Content-Type",
