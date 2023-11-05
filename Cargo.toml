@@ -14,7 +14,7 @@ crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 
-rust-rcs-core = { path = "../rust-rcs-core", version = "0.1" }
+rust-rcs-core = { path = "../rust-rcs-core", version = "0.2" }
 
 rust-strict-sdp = { version = "0.1" }
 

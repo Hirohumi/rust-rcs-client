@@ -309,9 +309,10 @@ impl RcsEngine {
                     let stream: std::net::TcpStream = sock.into();
                     if let Ok(stream) = tokio::net::TcpStream::from_std(stream) {
                         if let Ok(cs) = if tls {
-                            ClientStream::new_ssl_connected(tls_client_config, stream, &raddr).await
+                            ClientStream::new_tokio_ssl_connected(tls_client_config, stream, &raddr)
+                                .await
                         } else {
-                            ClientStream::new_connected(stream).await
+                            ClientStream::new_tokio_connected(stream).await
                         } {
                             return Ok(cs);
                         }
@@ -797,7 +798,7 @@ impl RcsEngine {
                                     }
                                     if let Some(cs) = match service_type {
                                         ServiceType::SipD2T => {
-                                            match ClientStream::new(addr, port).await {
+                                            match ClientStream::new_android(addr, port).await {
                                                 Ok(cs) => Some(cs),
                                                 Err(e) => {
                                                     platform_log(LOG_TAG, format!("error creating client stream: {:?}", e));
@@ -806,9 +807,7 @@ impl RcsEngine {
                                             }
                                         }
                                         ServiceType::SipsD2T => {
-                                            let tls_client_config_ = Arc::clone(&tls_client_config);
-                                            match ClientStream::new_ssl(
-                                                tls_client_config_,
+                                            match ClientStream::new_android_ssl(
                                                 addr,
                                                 port,
                                                 if let Some(host) = &known_host {
