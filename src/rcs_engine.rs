@@ -42,10 +42,12 @@ use futures::StreamExt;
 use rust_rcs_core::ffi::log::platform_log;
 use rust_rcs_core::http::HttpClient;
 use rust_rcs_core::io::network::sock::NativeSocket;
+use rust_rcs_core::io::network::stream::AndroidStream;
 use rust_rcs_core::io::network::stream::ClientStream;
 // use rust_rcs_core::msrp::MsrpChannelManager;
 // use rust_rcs_core::msrp::MsrpTransportFactory;
 
+use rust_rcs_core::io::network::stream::TokioStream;
 use rust_rcs_core::msrp::info::MsrpInfo;
 // use rust_rcs_core::msrp::info::msrp_info_reader::AsMsrpInfo;
 use rust_rcs_core::msrp::info::MsrpInterfaceType;
@@ -818,7 +820,20 @@ impl RcsEngine {
                                             )
                                             .await
                                             {
-                                                Ok(cs) => Some(cs),
+                                                Ok(cs) => match cs.do_handshake().await {
+                                                    Ok((cs, _)) => {
+                                                        platform_log(LOG_TAG, format!("ssl do_handshake success"));
+                                                        Some(cs)
+                                                    },
+                                                    Err(e) => {
+                                                        platform_log(
+                                                            LOG_TAG,
+                                                            format!("ssl do_handshake failed with error {:?}", e),
+                                                        );
+                                                        None
+                                                    },
+                                                }
+,
                                                 Err(e) => {
                                                     platform_log(LOG_TAG, format!("error creating ssl client stream: {:?}", e));
                                                     None
@@ -831,7 +846,12 @@ impl RcsEngine {
 
                                         let t = SipTransport::new::<ClientStream>(
                                             transport_address.clone(),
-                                            SipTransportType::TCP,
+                                            match &cs {
+                                                ClientStream::AndroidNative(AndroidStream::Tcp(_)) => SipTransportType::TCP,
+                                                ClientStream::AndroidNative(AndroidStream::Tls(_, _)) => SipTransportType::TLS,
+                                                ClientStream::Tokio(TokioStream::Tcp(_)) => SipTransportType::TCP,
+                                                ClientStream::Tokio(TokioStream::Tls(_, _, _)) => SipTransportType::TLS,
+                                            },
                                         );
 
                                         let state_ec = Arc::clone(&state_);
