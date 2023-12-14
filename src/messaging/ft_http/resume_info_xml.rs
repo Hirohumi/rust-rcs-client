@@ -37,14 +37,14 @@ where
 
     for attribute in e.attributes() {
         if let Ok(attribute) = attribute {
-            if attribute.key == b"start" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
+            if attribute.key.as_ref() == b"start" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
                     if let Ok(attribute_value) = attribute_value.parse::<usize>() {
                         start.replace(attribute_value);
                     }
                 }
-            } else if attribute.key == b"end" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
+            } else if attribute.key.as_ref() == b"end" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
                     if let Ok(attribute_value) = attribute_value.parse::<usize>() {
                         end.replace(attribute_value);
                     }
@@ -56,7 +56,7 @@ where
     let mut level = 1;
 
     loop {
-        match xml_reader.read_event(buf) {
+        match xml_reader.read_event_into(buf) {
             Ok(Event::Start(ref _e)) => {
                 level += 1;
             }
@@ -96,9 +96,9 @@ where
 
     for attribute in e.attributes() {
         if let Ok(attribute) = attribute {
-            if attribute.key == b"url" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    url.replace(attribute_value);
+            if attribute.key.as_ref() == b"url" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    url.replace(attribute_value.into_owned());
                 }
             }
         }
@@ -107,7 +107,7 @@ where
     let mut level = 1;
 
     loop {
-        match xml_reader.read_event(buf) {
+        match xml_reader.read_event_into(buf) {
             Ok(Event::Start(ref _e)) => {
                 level += 1;
             }
@@ -143,11 +143,11 @@ where
     let mut data = None;
 
     let mut handle_element = |xml_reader: &mut Reader<R>, e: &BytesStart, level: i32| -> bool {
-        if e.name().eq_ignore_ascii_case(b"file-range") {
+        if e.name().as_ref().eq_ignore_ascii_case(b"file-range") {
             let mut buf = Vec::new();
             file_range = parse_file_range_element(xml_reader, &mut buf, e, level);
             return true;
-        } else if e.name().eq_ignore_ascii_case(b"data") {
+        } else if e.name().as_ref().eq_ignore_ascii_case(b"data") {
             let mut buf = Vec::new();
             data = parse_data_element(xml_reader, &mut buf, e, level);
             return true;
@@ -160,7 +160,7 @@ where
 
     if level > 0 {
         loop {
-            match xml_reader.read_event(buf) {
+            match xml_reader.read_event_into(buf) {
                 Ok(Event::Start(ref e)) => {
                     if !handle_element(xml_reader, e, 1) {
                         level += 1;
@@ -199,20 +199,20 @@ where
 }
 
 pub fn parse_xml(data: &[u8]) -> Option<ResumeInfo> {
-    let mut xml_reader = Reader::from_bytes(data);
+    let mut xml_reader = Reader::from_reader(data);
 
     let mut buf = Vec::new();
     loop {
-        match xml_reader.read_event(&mut buf) {
+        match xml_reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                if e.name().eq_ignore_ascii_case(b"file-resume-info") {
+                if e.name().as_ref().eq_ignore_ascii_case(b"file-resume-info") {
                     let mut buf = Vec::new();
                     return parse_file_resume_info(&mut xml_reader, &mut buf, e, 1);
                 }
             }
 
             Ok(Event::Empty(ref e)) => {
-                if e.name().eq_ignore_ascii_case(b"file-resume-info") {
+                if e.name().as_ref().eq_ignore_ascii_case(b"file-resume-info") {
                     let mut buf = Vec::new();
                     return parse_file_resume_info(&mut xml_reader, &mut buf, e, 0);
                 }

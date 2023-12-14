@@ -21,7 +21,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::{iter, panic};
 
-use rustls::{Certificate, ClientConfig, RootCertStore};
+use rustls::pki_types::CertificateDer;
+use rustls::{ClientConfig, RootCertStore};
 use rustls_pemfile::{read_one, Item};
 
 use rust_rcs_core::dns::DnsClient;
@@ -165,19 +166,18 @@ fn make_tls_client_config(root_dir: &str) -> ClientConfig {
                                 match item {
                                     Ok(cert_item) => match cert_item {
                                         Item::X509Certificate(cert_data) => {
-                                            let cert = Certificate(cert_data);
                                             platform_log(LOG_TAG, "adding X509Certificate");
-                                            root_certs.add(&cert).unwrap();
+                                            root_certs.add(cert_data).unwrap();
                                         }
-                                        Item::RSAKey(key) => platform_log(
+                                        Item::Pkcs1Key(key) => platform_log(
                                             LOG_TAG,
                                             format!("rsa pkcs1 key {:?} not handled", key),
                                         ),
-                                        Item::PKCS8Key(key) => platform_log(
+                                        Item::Pkcs8Key(key) => platform_log(
                                             LOG_TAG,
                                             format!("pkcs8 key {:?} not handled", key),
                                         ),
-                                        Item::ECKey(key) => platform_log(
+                                        Item::Sec1Key(key) => platform_log(
                                             LOG_TAG,
                                             format!("sec1 ec key {:?} not handled", key),
                                         ),
@@ -191,9 +191,9 @@ fn make_tls_client_config(root_dir: &str) -> ClientConfig {
                             let mut v = vec![0; 4 * 1024];
                             f.read_to_end(&mut v).unwrap();
 
-                            let cert = Certificate(v);
+                            let cert = CertificateDer::from(v);
                             platform_log(LOG_TAG, format!("adding certificate {:?}", cert));
-                            root_certs.add(&cert).unwrap();
+                            root_certs.add(cert).unwrap();
                         }
                     }
                     None => panic!(""),
@@ -205,7 +205,6 @@ fn make_tls_client_config(root_dir: &str) -> ClientConfig {
     }
 
     let client_config = ClientConfig::builder()
-        .with_safe_defaults()
         .with_root_certificates(root_certs)
         .with_no_client_auth();
 

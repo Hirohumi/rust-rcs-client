@@ -251,39 +251,39 @@ where
 
     for attribute in e.attributes() {
         if let Ok(attribute) = attribute {
-            if attribute.key == b"default" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(&xml_reader) {
-                    default.replace(attribute_value);
+            if attribute.key.as_ref() == b"default" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    default.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"id" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(&xml_reader) {
-                    id.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"id" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    id.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"VERS_version" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(&xml_reader) {
-                    VERS_version.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"VERS_version" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    VERS_version.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"VERS_validity_through" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(&xml_reader) {
-                    VERS_validity_through.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"VERS_validity_through" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    VERS_validity_through.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"TOKEN_token" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(&xml_reader) {
-                    TOKEN_token.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"TOKEN_token" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    TOKEN_token.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"TOKEN_validity_through" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(&xml_reader) {
-                    TOKEN_validity_through.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"TOKEN_validity_through" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    TOKEN_validity_through.replace(attribute_value.into_owned());
                 }
             }
         }
     }
 
     loop {
-        match xml_reader.read_event(buf) {
+        match xml_reader.read_event_into(buf) {
             Ok(Event::Start(ref e)) => {
                 level += 1;
-                if e.name().equals_bytes(b"wap-provisioningdoc", true) {
+                if e.name().as_ref().equals_bytes(b"wap-provisioningdoc", true) {
                     let mut buf = Vec::new();
                     wap_provisioning_doc
                         .replace(read_wap_provisioning_doc(xml_reader, &mut buf, e));
@@ -338,10 +338,10 @@ where
     let mut root = Vec::new();
 
     loop {
-        match xml_reader.read_event(buf) {
+        match xml_reader.read_event_into(buf) {
             Ok(Event::Start(ref e)) => {
                 level += 1;
-                if e.name().equals_bytes(b"provisioning-info", true) {
+                if e.name().as_ref().equals_bytes(b"provisioning-info", true) {
                     let mut buf = Vec::new();
                     if let Some(provisioning_info) =
                         read_provisionging_info(xml_reader, &mut buf, e)
@@ -376,9 +376,9 @@ pub fn load_provisionging_doc(path: &str) -> Option<LocalProvisioningDoc> {
     if let Ok(mut xml_reader) = Reader::from_file(path) {
         let mut buf = Vec::new();
         loop {
-            match xml_reader.read_event(&mut buf) {
+            match xml_reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
-                    if e.name().equals_bytes(b"provisioning-doc", true) {
+                    if e.name().as_ref().equals_bytes(b"provisioning-doc", true) {
                         let mut buf = Vec::new();
                         return Some(read_provisionging_doc(&mut xml_reader, &mut buf, e));
                     }
@@ -403,7 +403,7 @@ pub fn write_provisioning_info<W>(
 where
     W: Write,
 {
-    let mut elem = BytesStart::owned(b"provisioning-info".to_vec(), b"provisioning-info".len());
+    let mut elem = BytesStart::new("provisioning-info");
 
     elem.push_attribute(("default", provisioning_info.default.as_str()));
     elem.push_attribute(("id", provisioning_info.id.as_str()));
@@ -427,7 +427,7 @@ where
         write_wap_provisioning_doc(xml_writer, wap_provisioning_doc)?;
     }
 
-    xml_writer.write_event(Event::End(BytesEnd::borrowed(b"provisioning-info")))?;
+    xml_writer.write_event(Event::End(BytesEnd::new("provisioning-info")))?;
 
     Ok(())
 }
@@ -439,7 +439,7 @@ pub fn write_provisionging_doc<W>(
 where
     W: Write,
 {
-    let elem = BytesStart::owned(b"provisioning-doc".to_vec(), b"provisioning-doc".len());
+    let elem = BytesStart::new("provisioning-doc");
 
     xml_writer.write_event(Event::Start(elem))?;
 
@@ -447,7 +447,7 @@ where
         write_provisioning_info(xml_writer, provisioning_info)?;
     }
 
-    xml_writer.write_event(Event::End(BytesEnd::borrowed(b"provisioning-doc")))?;
+    xml_writer.write_event(Event::End(BytesEnd::new("provisioning-doc")))?;
 
     Ok(())
 }

@@ -42,20 +42,20 @@ pub struct ContactNode {
 }
 
 pub fn parse_xml(data: &[u8]) -> Option<RegInfoXml> {
-    let mut xml_reader = Reader::from_bytes(data);
+    let mut xml_reader = Reader::from_reader(data);
 
     let mut buf = Vec::new();
     loop {
-        match xml_reader.read_event(&mut buf) {
+        match xml_reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                if e.name().eq_ignore_ascii_case(b"reginfo") {
+                if e.name().as_ref().eq_ignore_ascii_case(b"reginfo") {
                     let mut buf = Vec::new();
                     return parse_reg_info(&mut xml_reader, &mut buf, e, 1);
                 }
             }
 
             Ok(Event::Empty(ref e)) => {
-                if e.name().eq_ignore_ascii_case(b"reginfo") {
+                if e.name().as_ref().eq_ignore_ascii_case(b"reginfo") {
                     let mut buf = Vec::new();
                     return parse_reg_info(&mut xml_reader, &mut buf, e, 0);
                 }
@@ -86,13 +86,13 @@ where
 
     for attribute in e.attributes() {
         if let Ok(attribute) = attribute {
-            if attribute.key == b"version" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    version.replace(attribute_value);
+            if attribute.key.as_ref() == b"version" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    version.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"state" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    state.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"state" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    state.replace(attribute_value.into_owned());
                 }
             }
         }
@@ -101,7 +101,7 @@ where
     let mut registration_nodes = Vec::new();
 
     let mut handle_element = |xml_reader: &mut Reader<R>, e: &BytesStart, level: i32| -> bool {
-        if e.name().eq_ignore_ascii_case(b"registration") {
+        if e.name().as_ref().eq_ignore_ascii_case(b"registration") {
             let mut buf = Vec::new();
             if let Some(registration_node) = parse_registration_node(xml_reader, &mut buf, e, level)
             {
@@ -116,7 +116,7 @@ where
 
     if level > 0 {
         loop {
-            match xml_reader.read_event(buf) {
+            match xml_reader.read_event_into(buf) {
                 Ok(Event::Start(ref e)) => {
                     if !handle_element(xml_reader, e, 1) {
                         level += 1;
@@ -169,17 +169,17 @@ where
 
     for attribute in e.attributes() {
         if let Ok(attribute) = attribute {
-            if attribute.key == b"aor" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    aor.replace(attribute_value);
+            if attribute.key.as_ref() == b"aor" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    aor.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"id" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    id.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"id" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    id.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"state" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    state.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"state" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    state.replace(attribute_value.into_owned());
                 }
             }
         }
@@ -190,7 +190,7 @@ where
     let mut level = level;
 
     let mut handle_element = |xml_reader: &mut Reader<R>, e: &BytesStart, level: i32| -> bool {
-        if e.name().eq_ignore_ascii_case(b"contact") {
+        if e.name().as_ref().eq_ignore_ascii_case(b"contact") {
             let mut buf = Vec::new();
             if let Some(parameter) = parse_contact_node(xml_reader, &mut buf, e, level) {
                 contact_nodes.push(parameter);
@@ -202,7 +202,7 @@ where
 
     if level > 0 {
         loop {
-            match xml_reader.read_event(buf) {
+            match xml_reader.read_event_into(buf) {
                 Ok(Event::Start(ref e)) => {
                     if !handle_element(xml_reader, e, 1) {
                         level += 1;
@@ -258,25 +258,25 @@ where
 
     for attribute in e.attributes() {
         if let Ok(attribute) = attribute {
-            if attribute.key == b"state" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    state.replace(attribute_value);
+            if attribute.key.as_ref() == b"state" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    state.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"event" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    event.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"event" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    event.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"duration-registered" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    duration_registered.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"duration-registered" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    duration_registered.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"expires" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    expires.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"expires" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    expires.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"id" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    id.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"id" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    id.replace(attribute_value.into_owned());
                 }
             }
         }
@@ -288,9 +288,9 @@ where
 
     if level > 0 {
         loop {
-            match xml_reader.read_event(buf) {
+            match xml_reader.read_event_into(buf) {
                 Ok(Event::Start(ref e)) => {
-                    if e.name().eq_ignore_ascii_case(b"uri") {
+                    if e.name().as_ref().eq_ignore_ascii_case(b"uri") {
                         let mut buf = Vec::new();
                         if let Some(contact_node_uri) = parse_contact_node_uri(xml_reader, &mut buf)
                         {
@@ -340,15 +340,15 @@ where
     let mut level = 1;
 
     loop {
-        match xml_reader.read_event(buf) {
+        match xml_reader.read_event_into(buf) {
             Ok(Event::Start(ref _e)) => {
                 level += 1;
             }
 
             Ok(Event::Text(ref e)) => {
                 if level == 1 {
-                    if let Ok(t) = e.unescape_and_decode(&xml_reader) {
-                        uri.replace(t);
+                    if let Ok(t) = e.unescape() {
+                        uri.replace(t.into_owned());
                     }
                 }
             }

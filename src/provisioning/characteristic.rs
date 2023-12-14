@@ -55,13 +55,13 @@ where
 
     for attribute in e.attributes() {
         if let Ok(attribute) = attribute {
-            if attribute.key == b"name" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    name.replace(attribute_value);
+            if attribute.key.as_ref() == b"name" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    name.replace(attribute_value.into_owned());
                 }
-            } else if attribute.key == b"value" {
-                if let Ok(attribute_value) = attribute.unescape_and_decode_value(xml_reader) {
-                    value.replace(attribute_value);
+            } else if attribute.key.as_ref() == b"value" {
+                if let Ok(attribute_value) = attribute.unescape_value() {
+                    value.replace(attribute_value.into_owned());
                 }
             }
         }
@@ -71,7 +71,7 @@ where
 
     if level > 0 {
         loop {
-            match xml_reader.read_event(buf) {
+            match xml_reader.read_event_into(buf) {
                 Ok(Event::Start(_)) => {
                     level += 1;
                     if level == 0 {
@@ -106,7 +106,7 @@ pub fn write_parm<W>(xml_writer: &mut Writer<W>, parameter: &Parameter) -> quick
 where
     W: Write,
 {
-    let mut elem = BytesStart::owned(b"parm".to_vec(), b"parm".len());
+    let mut elem = BytesStart::new("parm");
 
     elem.push_attribute(("name", parameter.name.as_str()));
     elem.push_attribute(("value", parameter.value.as_str()));
@@ -193,7 +193,7 @@ impl FromStr for Characteristic {
                               e: &BytesStart,
                               level: i32|
          -> Option<Characteristic> {
-            if e.name().eq_ignore_ascii_case(b"characteristic") {
+            if e.name().as_ref().eq_ignore_ascii_case(b"characteristic") {
                 let mut buf = Vec::new();
                 return read_characteristic(xml_reader, &mut buf, e, level);
             }
@@ -201,7 +201,7 @@ impl FromStr for Characteristic {
         };
 
         loop {
-            match xml_reader.read_event(&mut buf) {
+            match xml_reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
                     if let Some(characteristic) = handle_element(&mut xml_reader, e, 1) {
                         return Ok(characteristic);
@@ -256,9 +256,9 @@ where
 
     for attribute in e.attributes() {
         if let Ok(attribute) = attribute {
-            if attribute.key == b"type" {
-                if let Ok(value) = attribute.unescape_and_decode_value(xml_reader) {
-                    characteristic_type.replace(value);
+            if attribute.key.as_ref() == b"type" {
+                if let Ok(value) = attribute.unescape_value() {
+                    characteristic_type.replace(value.into_owned());
                 }
             }
         }
@@ -270,13 +270,13 @@ where
     let mut child_characteristics = Vec::new();
 
     let mut handle_element = |xml_reader: &mut Reader<R>, e: &BytesStart, level: i32| -> bool {
-        if e.name().eq_ignore_ascii_case(b"characteristic") {
+        if e.name().as_ref().eq_ignore_ascii_case(b"characteristic") {
             let mut buf = Vec::new();
             if let Some(characteristic) = read_characteristic(xml_reader, &mut buf, e, level) {
                 child_characteristics.push(characteristic);
             }
             return true;
-        } else if e.name().eq_ignore_ascii_case(b"parm") {
+        } else if e.name().as_ref().eq_ignore_ascii_case(b"parm") {
             let mut buf = Vec::new();
             if let Some(parameter) = read_parm(xml_reader, &mut buf, e, level) {
                 characteristic_parameters.push(parameter);
@@ -288,7 +288,7 @@ where
 
     if level > 0 {
         loop {
-            match xml_reader.read_event(buf) {
+            match xml_reader.read_event_into(buf) {
                 Ok(Event::Start(ref e)) => {
                     if !handle_element(xml_reader, e, 1) {
                         level += 1;
@@ -335,7 +335,7 @@ pub fn write_characteristic<W>(
 where
     W: Write,
 {
-    let mut elem = BytesStart::owned(b"characteristic".to_vec(), b"characteristic".len());
+    let mut elem = BytesStart::new("characteristic");
 
     elem.push_attribute(("type", characteristic.characteristic_type.as_str()));
 
@@ -349,7 +349,7 @@ where
         write_characteristic(xml_writer, &characteristic)?;
     }
 
-    xml_writer.write_event(Event::End(BytesEnd::borrowed(b"characteristic")))?;
+    xml_writer.write_event(Event::End(BytesEnd::new("characteristic")))?;
 
     Ok(())
 }

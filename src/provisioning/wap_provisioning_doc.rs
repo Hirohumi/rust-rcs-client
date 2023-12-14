@@ -191,7 +191,7 @@ where
     let mut root = Vec::new();
 
     let mut handle_element = |xml_reader: &mut Reader<R>, e: &BytesStart, level: i32| -> bool {
-        if e.name().equals_bytes(b"characteristic", true) {
+        if e.name().as_ref().equals_bytes(b"characteristic", true) {
             let mut buf = Vec::new();
             if let Some(characteristic) = read_characteristic(xml_reader, &mut buf, e, level) {
                 root.push(characteristic);
@@ -202,7 +202,7 @@ where
     };
 
     loop {
-        match xml_reader.read_event(buf) {
+        match xml_reader.read_event_into(buf) {
             Ok(Event::Start(ref e)) => {
                 if !handle_element(xml_reader, e, 1) {
                     level += 1;
@@ -240,10 +240,7 @@ pub fn write_wap_provisioning_doc<W>(
 where
     W: Write,
 {
-    let elem = BytesStart::owned(
-        b"wap-provisioningdoc".to_vec(),
-        b"wap-provisioningdoc".len(),
-    );
+    let elem = BytesStart::new("wap-provisioningdoc");
 
     xml_writer.write_event(Event::Start(elem))?;
 
@@ -251,7 +248,7 @@ where
         write_characteristic(xml_writer, &characteristic)?;
     }
 
-    xml_writer.write_event(Event::End(BytesEnd::borrowed(b"wap-provisioningdoc")))?;
+    xml_writer.write_event(Event::End(BytesEnd::new("wap-provisioningdoc")))?;
 
     Ok(())
 }
@@ -262,9 +259,9 @@ impl FromStr for WapProvisioningDoc {
         let mut xml_reader = Reader::from_str(s);
         let mut buf = Vec::new();
         loop {
-            match xml_reader.read_event(&mut buf) {
+            match xml_reader.read_event_into(&mut buf) {
                 Ok(Event::Start(ref e)) => {
-                    if e.name().equals_bytes(b"wap-provisioningdoc", true) {
+                    if e.name().as_ref().equals_bytes(b"wap-provisioningdoc", true) {
                         let mut buf = Vec::new();
                         return Ok(read_wap_provisioning_doc(&mut xml_reader, &mut buf, e));
                     }
