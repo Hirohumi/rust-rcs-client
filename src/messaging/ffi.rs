@@ -116,6 +116,37 @@ impl Drop for SendImdnReportResultCallbackContextWrapper {
 
 unsafe impl Send for SendImdnReportResultCallbackContextWrapper {}
 
+pub type UploadFileProgressCallback =
+    extern "C" fn(current: u32, total: i32, context: *mut UploadFileProgressCallbackContext);
+
+#[repr(C)]
+pub struct UploadFileProgressCallbackContext {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
+
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+extern "C" {
+    fn upload_file_progress_callback_context_release(
+        context: *mut UploadFileProgressCallbackContext,
+    );
+}
+
+pub struct UploadFileProgressCallbackContextWrapper(pub NonNull<UploadFileProgressCallbackContext>);
+
+impl Drop for UploadFileProgressCallbackContextWrapper {
+    fn drop(&mut self) {
+        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        let cb_context = self.0.as_ptr();
+        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        unsafe {
+            upload_file_progress_callback_context_release(cb_context);
+        }
+    }
+}
+
+unsafe impl Send for UploadFileProgressCallbackContextWrapper {}
+
 pub type UploadFileResultCallback = extern "C" fn(
     status_code: u16,
     reason_phrase: *const c_char,
@@ -148,6 +179,39 @@ impl Drop for UploadFileResultCallbackContextWrapper {
 }
 
 unsafe impl Send for UploadFileResultCallbackContextWrapper {}
+
+pub type DownloadFileProgressCallback =
+    extern "C" fn(current: u32, total: i32, context: *mut DownloadFileProgressCallbackContext);
+
+#[repr(C)]
+pub struct DownloadFileProgressCallbackContext {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
+
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+extern "C" {
+    fn download_file_progress_callback_context_release(
+        context: *mut DownloadFileProgressCallbackContext,
+    );
+}
+
+pub struct DownloadileProgressCallbackContextWrapper(
+    pub NonNull<DownloadFileProgressCallbackContext>,
+);
+
+impl Drop for DownloadileProgressCallbackContextWrapper {
+    fn drop(&mut self) {
+        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        let cb_context = self.0.as_ptr();
+        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        unsafe {
+            download_file_progress_callback_context_release(cb_context);
+        }
+    }
+}
+
+unsafe impl Send for DownloadileProgressCallbackContextWrapper {}
 
 pub type DownloadFileResultCallback = extern "C" fn(
     status_code: u16,

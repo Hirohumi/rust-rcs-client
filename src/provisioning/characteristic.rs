@@ -25,8 +25,6 @@ use quick_xml::{
     Reader, Writer,
 };
 
-const LOG_TAG: &str = "3gpp-mo";
-
 pub struct Parameter {
     pub name: String,
     pub value: String,

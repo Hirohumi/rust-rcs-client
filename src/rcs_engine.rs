@@ -1229,7 +1229,7 @@ impl RcsEngine {
         send_imdn_report_result_callback(403, String::from("Forbidden"));
     }
 
-    pub fn upload_file<F>(
+    pub fn upload_file<PF, RF>(
         &self,
         tid: &str,
         file_path: &str,
@@ -1245,9 +1245,11 @@ impl RcsEngine {
         gba_context: Arc<GbaContext>,
         security_context: Arc<SecurityContext>,
         rt: Arc<Runtime>,
-        upload_file_result_callback: F,
+        upload_file_progress_callback: PF,
+        upload_file_result_callback: RF,
     ) where
-        F: FnOnce(u16, String, Option<String>) + Send + Sync + 'static,
+        PF: Fn(u32, i32) + Send + Sync + 'static,
+        RF: FnOnce(u16, String, Option<String>) + Send + Sync + 'static,
     {
         match Uuid::parse_str(tid) {
             Ok(tid) => {
@@ -1317,6 +1319,10 @@ impl RcsEngine {
                                 _ => None,
                             };
 
+                            let progress_callback: Box<dyn Fn(u32, i32) + Send + Sync> =
+                                Box::new(upload_file_progress_callback);
+                            let progress_callback = Arc::new(progress_callback);
+
                             match upload_file(
                                 &ft_http_service,
                                 &ft_http_cs_uri,
@@ -1327,6 +1333,7 @@ impl RcsEngine {
                                 &http_client,
                                 &gba_context,
                                 &security_context,
+                                &progress_callback,
                             )
                             .await
                             {
@@ -1357,7 +1364,7 @@ impl RcsEngine {
         }
     }
 
-    pub fn download_file<F>(
+    pub fn download_file<PF, RF>(
         &self,
         file_uri: &str,
         download_path: &str,
@@ -1368,9 +1375,11 @@ impl RcsEngine {
         gba_context: Arc<GbaContext>,
         security_context: Arc<SecurityContext>,
         rt: Arc<Runtime>,
-        download_file_result_callback: F,
+        download_file_progress_callback: PF,
+        download_file_result_callback: RF,
     ) where
-        F: FnOnce(u16, String) + Send + Sync + 'static,
+        PF: Fn(u32, i32) + Send + Sync + 'static,
+        RF: FnOnce(u16, String) + Send + Sync + 'static,
     {
         let ft_auth = self.ft_http_configs.ft_auth;
 
@@ -1411,6 +1420,7 @@ impl RcsEngine {
                     &gba_context,
                     &security_context,
                     None,
+                    download_file_progress_callback,
                 )
                 .await
                 {

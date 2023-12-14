@@ -129,7 +129,7 @@ async fn retrieve_specific_chatbots_inner(
                 }
             }
 
-            if let Ok((resp, resp_stream)) = conn.send(req).await {
+            if let Ok((resp, resp_stream)) = conn.send(req, |_| {}).await {
                 platform_log(
                     LOG_TAG,
                     format!(
@@ -410,7 +410,7 @@ async fn search_chatbot_directory_inner(
                 }
             }
 
-            if let Ok((resp, resp_stream)) = conn.send(req).await {
+            if let Ok((resp, resp_stream)) = conn.send(req, |_| {}).await {
                 platform_log(
                     LOG_TAG,
                     format!(
@@ -656,7 +656,7 @@ async fn retrieve_chatbot_info_inner(
                 }
             }
 
-            if let Ok((resp, resp_stream)) = conn.send(req).await {
+            if let Ok((resp, resp_stream)) = conn.send(req, |_| {}).await {
                 platform_log(
                     LOG_TAG,
                     format!(

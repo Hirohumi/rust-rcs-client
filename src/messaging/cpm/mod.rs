@@ -30,8 +30,6 @@ use self::session::CPMSession;
 
 use super::ffi::RecipientType;
 
-const LOG_TAG: &str = "messaging";
-
 pub struct MessagingSessionHandle {
     pub(crate) inner: Arc<SipSession<CPMSession>>,
 }

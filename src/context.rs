@@ -165,9 +165,9 @@ fn make_tls_client_config(root_dir: &str) -> ClientConfig {
                             for item in iter::from_fn(|| read_one(&mut buf_reader).transpose()) {
                                 match item {
                                     Ok(cert_item) => match cert_item {
-                                        Item::X509Certificate(cert_data) => {
+                                        Item::X509Certificate(cert) => {
                                             platform_log(LOG_TAG, "adding X509Certificate");
-                                            root_certs.add(cert_data).unwrap();
+                                            root_certs.add(cert).unwrap();
                                         }
                                         Item::Pkcs1Key(key) => platform_log(
                                             LOG_TAG,

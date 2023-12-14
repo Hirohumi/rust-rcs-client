@@ -19,6 +19,7 @@ use std::{
     pin::Pin,
     sync::Arc,
     task::{Context, Poll},
+    u32,
 };
 
 use futures::{future::BoxFuture, io::copy_buf, AsyncWrite, FutureExt};
@@ -29,12 +30,15 @@ use rust_rcs_core::{
         HttpClient,
     },
     internet::{header, Header},
+    io::ProgressReportingReader,
     security::{
         authentication::digest::DigestAnswerParams,
         gba::{self, GbaContext},
         SecurityContext,
     },
 };
+use tokio::io::copy;
+use tokio_util::compat::{FuturesAsyncReadCompatExt, FuturesAsyncWriteCompatExt};
 use url::Url;
 
 const LOG_TAG: &str = "fthttp";
@@ -122,7 +126,7 @@ impl AsyncWrite for FileOutput {
     }
 }
 
-async fn download_file_inner(
+async fn download_file_inner<F>(
     file_uri: &str,
     download_path: &str,
     start: usize,
@@ -132,7 +136,11 @@ async fn download_file_inner(
     gba_context: &Arc<GbaContext>,
     security_context: &Arc<SecurityContext>,
     digest_answer: Option<&DigestAnswerParams>,
-) -> Result<(), FileDownloadError> {
+    progress_callback: F,
+) -> Result<(), FileDownloadError>
+where
+    F: Fn(u32, i32) + Send + Sync + 'static,
+{
     if let Ok(url) = Url::parse(file_uri) {
         if let Ok(conn) = http_client.connect(&url, false).await {
             let host = url.host_str().unwrap();
@@ -195,7 +203,7 @@ async fn download_file_inner(
                 }
             }
 
-            if let Ok((resp, resp_stream)) = conn.send(req).await {
+            if let Ok((resp, resp_stream)) = conn.send(req, |_| {}).await {
                 platform_log(
                     LOG_TAG,
                     format!(
@@ -221,7 +229,9 @@ async fn download_file_inner(
                         }
                     }
 
-                    if let Some(mut resp_stream) = resp_stream {
+                    let progress_total = get_progress_total(total);
+
+                    if let Some(resp_stream) = resp_stream {
                         let mut f = if start == 0 {
                             match OpenOptions::new()
                                 .write(true)
@@ -284,9 +294,18 @@ async fn download_file_inner(
                             return Err(FileDownloadError::IO);
                         }
 
-                        let mut f = FileOutput { f };
+                        let f = FileOutput { f };
 
-                        match copy_buf(&mut resp_stream, &mut f).await {
+                        let reader = ProgressReportingReader::new(resp_stream, move |read| {
+                            if let Ok(current) = u32::try_from(read) {
+                                progress_callback(current, progress_total);
+                            }
+                        });
+
+                        let mut rh = reader.compat();
+                        let mut wh = f.compat_write();
+
+                        match copy(&mut rh, &mut wh).await {
                             Ok(i) => {
                                 platform_log(LOG_TAG, format!("bytes copied {}", i));
                                 let download_size_verified = if let Some(total) = total {
@@ -348,6 +367,7 @@ async fn download_file_inner(
                                     gba_context,
                                     security_context,
                                     Some(&answer),
+                                    progress_callback,
                                 )
                                 .await;
                             }
@@ -371,7 +391,7 @@ async fn download_file_inner(
     }
 }
 
-pub fn download_file<'a, 'b: 'a>(
+pub fn download_file<'a, 'b: 'a, F>(
     file_uri: &'b str,
     download_path: &'b str,
     start: usize,
@@ -381,7 +401,11 @@ pub fn download_file<'a, 'b: 'a>(
     gba_context: &'b Arc<GbaContext>,
     security_context: &'b Arc<SecurityContext>,
     digest_answer: Option<&'a DigestAnswerParams>,
-) -> BoxFuture<'a, Result<(), FileDownloadError>> {
+    progress_callback: F,
+) -> BoxFuture<'a, Result<(), FileDownloadError>>
+where
+    F: Fn(u32, i32) + Send + Sync + 'static,
+{
     async move {
         download_file_inner(
             file_uri,
@@ -393,8 +417,33 @@ pub fn download_file<'a, 'b: 'a>(
             gba_context,
             security_context,
             digest_answer,
+            progress_callback,
         )
         .await
     }
     .boxed()
+}
+
+fn get_progress_total(total: Option<usize>) -> i32 {
+    if let Some(total) = total {
+        if let Ok(total) = i32::try_from(total) {
+            total
+        } else {
+            -1
+        }
+    } else {
+        -1
+    }
+}
+
+fn get_progress_current(start: usize, i: u64) -> u32 {
+    if let Ok(start) = u32::try_from(start) {
+        if let Ok(i) = u32::try_from(i) {
+            return start + i;
+        } else {
+            0
+        }
+    } else {
+        0
+    }
 }

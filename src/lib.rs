@@ -59,10 +59,13 @@ use ffi::{
     StateChangeCallbackContext, StateChangeCallbackContextWrapper,
 };
 use messaging::ffi::{
-    get_recipient_type, DownloadFileResultCallback, DownloadFileResultCallbackContext,
-    DownloadFileResultCallbackContextWrapper, MessageResultCallback, MessageResultCallbackContext,
-    MessageResultCallbackContextWrapper, SendImdnReportResultCallback,
-    SendImdnReportResultCallbackContext, SendImdnReportResultCallbackContextWrapper,
+    get_recipient_type, DownloadFileProgressCallback, DownloadFileProgressCallbackContext,
+    DownloadFileResultCallback, DownloadFileResultCallbackContext,
+    DownloadFileResultCallbackContextWrapper, DownloadileProgressCallbackContextWrapper,
+    MessageResultCallback, MessageResultCallbackContext, MessageResultCallbackContextWrapper,
+    SendImdnReportResultCallback, SendImdnReportResultCallbackContext,
+    SendImdnReportResultCallbackContextWrapper, UploadFileProgressCallback,
+    UploadFileProgressCallbackContext, UploadFileProgressCallbackContextWrapper,
     UploadFileResultCallback, UploadFileResultCallbackContext,
     UploadFileResultCallbackContextWrapper,
 };
@@ -610,7 +613,13 @@ pub unsafe extern "C" fn rcs_client_send_message(
 ) {
     platform_log(LOG_TAG, "calling rcs_client_send_message()");
 
-    let cb_context = MessageResultCallbackContextWrapper(NonNull::new(cb_context).unwrap());
+    let cb_context = if cb_context.is_null() {
+        None
+    } else {
+        Some(MessageResultCallbackContextWrapper(
+            NonNull::new(cb_context).unwrap(),
+        ))
+    };
 
     if let Some(rcs_runtime) = rcs_runtime.as_ref() {
         if let Some(client) = client.as_ref() {
@@ -620,7 +629,11 @@ pub unsafe extern "C" fn rcs_client_send_message(
             let recipient_type = get_recipient_type(recipient_type);
 
             if let Some(recipient_type) = recipient_type {
-                let cb_context_ = Arc::new(Mutex::new(cb_context));
+                let cb_context_ = if let Some(cb_context) = cb_context {
+                    Some(Arc::new(Mutex::new(cb_context)))
+                } else {
+                    None
+                };
 
                 client.engine.send_message(
                     &message_type,
@@ -630,9 +643,16 @@ pub unsafe extern "C" fn rcs_client_send_message(
                     move |status_code, reason_phrase| {
                         if let Some(cb) = cb {
                             let reason_phrase = CString::new(reason_phrase).unwrap();
-                            let cb_context = cb_context_.lock().unwrap();
-                            let cb_context_ptr = cb_context.0.as_ptr();
-                            cb(status_code, reason_phrase.as_ptr(), cb_context_ptr);
+                            cb(
+                                status_code,
+                                reason_phrase.as_ptr(),
+                                if let Some(cb_context_) = cb_context_ {
+                                    let cb_context = cb_context_.lock().unwrap();
+                                    cb_context.0.as_ptr()
+                                } else {
+                                    ptr::null_mut()
+                                },
+                            );
                         }
                     },
                     &rcs_runtime.rt,
@@ -645,8 +665,15 @@ pub unsafe extern "C" fn rcs_client_send_message(
 
     if let Some(cb) = cb {
         let reason_phrase = CString::new("Forbidden").unwrap();
-        let cb_context_ptr = cb_context.0.as_ptr();
-        cb(403, reason_phrase.as_ptr(), cb_context_ptr);
+        cb(
+            403,
+            reason_phrase.as_ptr(),
+            if let Some(cb_context) = cb_context {
+                cb_context.0.as_ptr()
+            } else {
+                ptr::null_mut()
+            },
+        );
     }
 }
 
@@ -663,12 +690,22 @@ pub unsafe extern "C" fn rcs_client_send_imdn_report(
 ) {
     platform_log(LOG_TAG, "calling rcs_client_send_imdn_report()");
 
-    let cb_context = SendImdnReportResultCallbackContextWrapper(NonNull::new(cb_context).unwrap());
+    let cb_context = if cb_context.is_null() {
+        None
+    } else {
+        Some(SendImdnReportResultCallbackContextWrapper(
+            NonNull::new(cb_context).unwrap(),
+        ))
+    };
 
     if let Some(rcs_runtime) = rcs_runtime.as_ref() {
         let rt = Arc::clone(&rcs_runtime.rt);
         if let Some(client) = client.as_ref() {
-            let cb_context_ = Arc::new(Mutex::new(cb_context));
+            let cb_context_ = if let Some(cb_context) = cb_context {
+                Some(Arc::new(Mutex::new(cb_context)))
+            } else {
+                None
+            };
 
             let imdn_content = CStr::from_ptr(imdn_content).to_string_lossy();
             let sender_uri = CStr::from_ptr(sender_uri).to_string_lossy();
@@ -682,10 +719,16 @@ pub unsafe extern "C" fn rcs_client_send_imdn_report(
                 move |status_code, reason_phrase| {
                     if let Some(cb) = cb {
                         let reason_phrase = CString::new(reason_phrase).unwrap();
-
-                        let cb_context = cb_context_.lock().unwrap();
-                        let cb_context_ptr = cb_context.0.as_ptr();
-                        cb(status_code, reason_phrase.as_ptr(), cb_context_ptr);
+                        cb(
+                            status_code,
+                            reason_phrase.as_ptr(),
+                            if let Some(cb_context_) = cb_context_ {
+                                let cb_context = cb_context_.lock().unwrap();
+                                cb_context.0.as_ptr()
+                            } else {
+                                ptr::null_mut()
+                            },
+                        );
                     }
                 },
             );
@@ -696,8 +739,15 @@ pub unsafe extern "C" fn rcs_client_send_imdn_report(
 
     if let Some(cb) = cb {
         let reason_phrase = CString::new("Forbidden").unwrap();
-        let cb_context_ptr = cb_context.0.as_ptr();
-        cb(403, reason_phrase.as_ptr(), cb_context_ptr);
+        cb(
+            403,
+            reason_phrase.as_ptr(),
+            if let Some(cb_context) = cb_context {
+                cb_context.0.as_ptr()
+            } else {
+                ptr::null_mut()
+            },
+        );
     }
 }
 
@@ -714,12 +764,28 @@ pub unsafe extern "C" fn rcs_client_upload_file(
     thumbnail_name: *const c_char,
     thumbnail_mime: *const c_char,
     thumbnail_hash: *const c_char,
-    cb: Option<UploadFileResultCallback>,
-    cb_context: *mut UploadFileResultCallbackContext,
+    progress_cb: Option<UploadFileProgressCallback>,
+    progress_cb_context: *mut UploadFileProgressCallbackContext,
+    result_cb: Option<UploadFileResultCallback>,
+    result_cb_context: *mut UploadFileResultCallbackContext,
 ) {
     platform_log(LOG_TAG, "calling rcs_client_upload_file()");
 
-    let cb_context = UploadFileResultCallbackContextWrapper(NonNull::new(cb_context).unwrap());
+    let progress_cb_context = if progress_cb_context.is_null() {
+        None
+    } else {
+        Some(UploadFileProgressCallbackContextWrapper(
+            NonNull::new(progress_cb_context).unwrap(),
+        ))
+    };
+
+    let result_cb_context = if result_cb_context.is_null() {
+        None
+    } else {
+        Some(UploadFileResultCallbackContextWrapper(
+            NonNull::new(result_cb_context).unwrap(),
+        ))
+    };
 
     if let Some(rcs_runtime) = rcs_runtime.as_ref() {
         let rt = Arc::clone(&rcs_runtime.rt);
@@ -766,7 +832,17 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                     Some(CStr::from_ptr(thumbnail_hash).to_string_lossy())
                 };
 
-                let cb_context_ = Arc::new(Mutex::new(cb_context));
+                let progress_cb_context_ = if let Some(progress_cb_context) = progress_cb_context {
+                    Some(Arc::new(Mutex::new(progress_cb_context)))
+                } else {
+                    None
+                };
+
+                let result_cb_context_ = if let Some(result_cb_context) = result_cb_context {
+                    Some(Arc::new(Mutex::new(result_cb_context)))
+                } else {
+                    None
+                };
 
                 client.engine.upload_file(
                     &tid,
@@ -783,26 +859,43 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                     gba_context,
                     security_context,
                     rt,
+                    move |current, total| {
+                        if let Some(progress_cb) = progress_cb {
+                            progress_cb(
+                                current,
+                                total,
+                                if let Some(progress_cb_context_) = &progress_cb_context_ {
+                                    let progress_cb_context = progress_cb_context_.lock().unwrap();
+                                    progress_cb_context.0.as_ptr()
+                                } else {
+                                    ptr::null_mut()
+                                },
+                            );
+                        }
+                    },
                     move |status_code, reason_phrase, result_xml| {
-                        if let Some(cb) = cb {
+                        if let Some(result_cb) = result_cb {
                             let reason_phrase = CString::new(reason_phrase).unwrap();
-                            let cb_context = cb_context_.lock().unwrap();
-                            let cb_context_ptr = cb_context.0.as_ptr();
-                            if let Some(result_xml) = result_xml {
+                            let result_xml = if let Some(result_xml) = result_xml {
                                 let result_xml = CString::new(result_xml).unwrap();
-                                cb(
-                                    status_code,
-                                    reason_phrase.as_ptr(),
-                                    result_xml.as_ptr(),
-                                    cb_context_ptr,
-                                );
-                                return;
-                            }
-                            cb(
+                                Some(result_xml)
+                            } else {
+                                None
+                            };
+                            result_cb(
                                 status_code,
                                 reason_phrase.as_ptr(),
-                                ptr::null(),
-                                cb_context_ptr,
+                                if let Some(result_xml) = result_xml {
+                                    result_xml.as_ptr()
+                                } else {
+                                    ptr::null()
+                                },
+                                if let Some(result_cb_context_) = result_cb_context_ {
+                                    let result_cb_context = result_cb_context_.lock().unwrap();
+                                    result_cb_context.0.as_ptr()
+                                } else {
+                                    ptr::null_mut()
+                                },
                             );
                         }
                     },
@@ -813,11 +906,15 @@ pub unsafe extern "C" fn rcs_client_upload_file(
         }
     }
 
-    if let Some(cb) = cb {
+    if let Some(result_cb) = result_cb {
         let reason_phrase = CString::new("Forbidden").unwrap();
         let xml = ptr::null();
-        let cb_context_ptr = cb_context.0.as_ptr();
-        cb(403, reason_phrase.as_ptr(), xml, cb_context_ptr);
+        let result_cb_context_ptr = if let Some(result_cb_context) = result_cb_context {
+            result_cb_context.0.as_ptr()
+        } else {
+            ptr::null_mut()
+        };
+        result_cb(403, reason_phrase.as_ptr(), xml, result_cb_context_ptr);
     }
 }
 
@@ -829,12 +926,28 @@ pub unsafe extern "C" fn rcs_client_download_file(
     download_path: *const c_char,
     start: u32,
     total: i32,
-    cb: Option<DownloadFileResultCallback>,
-    cb_context: *mut DownloadFileResultCallbackContext,
+    progress_cb: Option<DownloadFileProgressCallback>,
+    progress_cb_context: *mut DownloadFileProgressCallbackContext,
+    result_cb: Option<DownloadFileResultCallback>,
+    result_cb_context: *mut DownloadFileResultCallbackContext,
 ) {
     platform_log(LOG_TAG, "calling rcs_client_download_file()");
 
-    let cb_context = DownloadFileResultCallbackContextWrapper(NonNull::new(cb_context).unwrap());
+    let progress_cb_context = if progress_cb_context.is_null() {
+        None
+    } else {
+        Some(DownloadileProgressCallbackContextWrapper(
+            NonNull::new(progress_cb_context).unwrap(),
+        ))
+    };
+
+    let result_cb_context = if result_cb_context.is_null() {
+        None
+    } else {
+        Some(DownloadFileResultCallbackContextWrapper(
+            NonNull::new(result_cb_context).unwrap(),
+        ))
+    };
 
     if let Some(rcs_runtime) = rcs_runtime.as_ref() {
         let rt = Arc::clone(&rcs_runtime.rt);
@@ -860,7 +973,18 @@ pub unsafe extern "C" fn rcs_client_download_file(
                         None
                     };
 
-                    let cb_context_ = Arc::new(Mutex::new(cb_context));
+                    let progress_cb_context_ =
+                        if let Some(progress_cb_context) = progress_cb_context {
+                            Some(Arc::new(Mutex::new(progress_cb_context)))
+                        } else {
+                            None
+                        };
+
+                    let result_cb_context_ = if let Some(result_cb_context) = result_cb_context {
+                        Some(Arc::new(Mutex::new(result_cb_context)))
+                    } else {
+                        None
+                    };
 
                     client.engine.download_file(
                         &file_uri,
@@ -872,12 +996,34 @@ pub unsafe extern "C" fn rcs_client_download_file(
                         gba_context,
                         security_context,
                         rt,
+                        move |current, total| {
+                            if let Some(progress_cb) = progress_cb {
+                                progress_cb(
+                                    current,
+                                    total,
+                                    if let Some(progress_cb_context_) = &progress_cb_context_ {
+                                        let progress_cb_context =
+                                            progress_cb_context_.lock().unwrap();
+                                        progress_cb_context.0.as_ptr()
+                                    } else {
+                                        ptr::null_mut()
+                                    },
+                                );
+                            }
+                        },
                         move |status_code, reason_phrase| {
-                            if let Some(cb) = cb {
+                            if let Some(result_cb) = result_cb {
                                 let reason_phrase = CString::new(reason_phrase).unwrap();
-                                let cb_context = cb_context_.lock().unwrap();
-                                let cb_context_ptr = cb_context.0.as_ptr();
-                                cb(status_code, reason_phrase.as_ptr(), cb_context_ptr);
+                                result_cb(
+                                    status_code,
+                                    reason_phrase.as_ptr(),
+                                    if let Some(result_cb_context_) = result_cb_context_ {
+                                        let result_cb_context = result_cb_context_.lock().unwrap();
+                                        result_cb_context.0.as_ptr()
+                                    } else {
+                                        ptr::null_mut()
+                                    },
+                                );
                             }
                         },
                     );
@@ -888,10 +1034,14 @@ pub unsafe extern "C" fn rcs_client_download_file(
         }
     }
 
-    if let Some(cb) = cb {
+    if let Some(cb) = result_cb {
         let reason_phrase = CString::new("Forbidden").unwrap();
-        let cb_context_ptr = cb_context.0.as_ptr();
-        cb(403, reason_phrase.as_ptr(), cb_context_ptr);
+        let result_cb_context_ptr = if let Some(result_cb_context) = result_cb_context {
+            result_cb_context.0.as_ptr()
+        } else {
+            ptr::null_mut()
+        };
+        cb(403, reason_phrase.as_ptr(), result_cb_context_ptr);
     }
 }
 

@@ -246,7 +246,7 @@ async fn try_otp_configuration_request_inner(
                     }
                 }
 
-                match connection.send(req).await {
+                match connection.send(req, |_| {}).await {
                     Ok((resp, resp_stream)) => {
                         platform_log(
                             LOG_TAG,
@@ -431,7 +431,7 @@ async fn try_https_configuration_request_inner(
                     }
                 }
 
-                match connection.send(req).await {
+                match connection.send(req, |_| {}).await {
                     Ok((resp, resp_stream)) => {
                         platform_log(
                             LOG_TAG,
@@ -745,7 +745,7 @@ async fn try_initial_http_request(
                 url.query(),
             );
 
-            if let Ok((resp, _)) = connection.send(req).await {
+            if let Ok((resp, _)) = connection.send(req, |_| {}).await {
                 platform_log(
                     LOG_TAG,
                     format!(

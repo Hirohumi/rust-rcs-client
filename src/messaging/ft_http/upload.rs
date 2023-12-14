@@ -156,7 +156,7 @@ async fn get_download_info_inner(
                 }
             }
 
-            if let Ok((resp, resp_stream)) = conn.send(req).await {
+            if let Ok((resp, resp_stream)) = conn.send(req, |_| {}).await {
                 if resp.status_code == 200 {
                     if let Some(mut resp_stream) = resp_stream {
                         let mut resp_data = Vec::new();
@@ -228,6 +228,7 @@ async fn resume_upload_put_inner(
     gba_context: &Arc<GbaContext>,
     security_context: &Arc<SecurityContext>,
     digest_answer: Option<&DigestAnswerParams>,
+    progress_callback: &Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> Result<String, FileUploadError> {
     if let Ok(url) = Url::parse(&resume_info.data_url) {
         if let Ok(conn) = http_client.connect(&url, false).await {
@@ -317,14 +318,27 @@ async fn resume_upload_put_inner(
                 format!("{}-{}/{}", resume_info.range_end, file_size - 1, file_size),
             ));
 
-            req.headers.push(Header::new(
-                "Content-Length",
-                format!("{}", http_body.estimated_size()),
-            ));
+            let progress_total = http_body.estimated_size();
+
+            req.headers
+                .push(Header::new("Content-Length", format!("{}", progress_total)));
 
             req.body = Some(http_body);
 
-            if let Ok((resp, _)) = conn.send(req).await {
+            let progress_callback_ = Arc::clone(progress_callback);
+
+            if let Ok((resp, _)) = conn
+                .send(req, move |written| {
+                    if let Ok(current) = u32::try_from(written) {
+                        if let Ok(total) = i32::try_from(progress_total) {
+                            progress_callback_(current, total);
+                        } else {
+                            progress_callback_(current, -1);
+                        }
+                    }
+                })
+                .await
+            {
                 if resp.status_code == 200 {
                     if let Some(authentication_info_header) =
                         header::search(&resp.headers, b"Authentication-Info", false)
@@ -380,6 +394,7 @@ async fn resume_upload_put_inner(
                                     gba_context,
                                     security_context,
                                     Some(&answer),
+                                    progress_callback,
                                 )
                                 .await;
                             }
@@ -413,6 +428,7 @@ fn resume_upload_put<'a, 'b: 'a>(
     gba_context: &'b Arc<GbaContext>,
     security_context: &'b Arc<SecurityContext>,
     digest_answer: Option<&'a DigestAnswerParams>,
+    progress_callback: &'b Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> BoxFuture<'a, Result<String, FileUploadError>> {
     async move {
         resume_upload_put_inner(
@@ -425,6 +441,7 @@ fn resume_upload_put<'a, 'b: 'a>(
             gba_context,
             security_context,
             digest_answer,
+            progress_callback,
         )
         .await
     }
@@ -441,6 +458,7 @@ async fn resume_upload_check_inner(
     gba_context: &Arc<GbaContext>,
     security_context: &Arc<SecurityContext>,
     digest_answer: Option<&DigestAnswerParams>,
+    progress_callback: &Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> Result<String, FileUploadError> {
     let url_string = format!(
         "{}?tid={}&get_upload_info",
@@ -496,7 +514,7 @@ async fn resume_upload_check_inner(
                 }
             }
 
-            if let Ok((resp, resp_stream)) = conn.send(req).await {
+            if let Ok((resp, resp_stream)) = conn.send(req, |_| {}).await {
                 platform_log(
                     LOG_TAG,
                     format!(
@@ -542,6 +560,7 @@ async fn resume_upload_check_inner(
                                     gba_context,
                                     security_context,
                                     None,
+                                    progress_callback,
                                 )
                                 .await;
                             }
@@ -575,6 +594,7 @@ async fn resume_upload_check_inner(
                                     gba_context,
                                     security_context,
                                     Some(&answer),
+                                    progress_callback,
                                 )
                                 .await;
                             }
@@ -590,6 +610,7 @@ async fn resume_upload_check_inner(
                         http_client,
                         gba_context,
                         security_context,
+                        progress_callback,
                     )
                     .await;
                 } else {
@@ -620,6 +641,7 @@ fn resume_upload_check<'a, 'b: 'a>(
     gba_context: &'b Arc<GbaContext>,
     security_context: &'b Arc<SecurityContext>,
     digest_answer: Option<&'a DigestAnswerParams>,
+    progress_callback: &'b Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> BoxFuture<'a, Result<String, FileUploadError>> {
     async move {
         resume_upload_check_inner(
@@ -632,6 +654,7 @@ fn resume_upload_check<'a, 'b: 'a>(
             gba_context,
             security_context,
             digest_answer,
+            progress_callback,
         )
         .await
     }
@@ -647,6 +670,7 @@ async fn resume_upload(
     http_client: &Arc<HttpClient>,
     gba_context: &Arc<GbaContext>,
     security_context: &Arc<SecurityContext>,
+    progress_callback: &Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> Result<String, FileUploadError> {
     resume_upload_check(
         ft_http_cs_uri,
@@ -658,6 +682,7 @@ async fn resume_upload(
         gba_context,
         security_context,
         None,
+        progress_callback,
     )
     .await
 }
@@ -673,6 +698,7 @@ async fn upload_file_actual_content_post_inner(
     gba_context: &Arc<GbaContext>,
     security_context: &Arc<SecurityContext>,
     digest_answer: Option<&DigestAnswerParams>,
+    progress_callback: &Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> Result<String, FileUploadError> {
     let host = url.host_str().unwrap();
 
@@ -848,14 +874,27 @@ async fn upload_file_actual_content_post_inner(
         },
     });
 
-    req.headers.push(Header::new(
-        "Content-Length",
-        format!("{}", http_body.estimated_size()),
-    ));
+    let progress_total = http_body.estimated_size();
+
+    req.headers
+        .push(Header::new("Content-Length", format!("{}", progress_total)));
 
     req.body = Some(http_body);
 
-    if let Ok((resp, resp_stream)) = conn.send(req).await {
+    let progress_callback_ = Arc::clone(progress_callback);
+
+    if let Ok((resp, resp_stream)) = conn
+        .send(req, move |written| {
+            if let Ok(current) = u32::try_from(written) {
+                if let Ok(total) = i32::try_from(progress_total) {
+                    progress_callback_(current, total);
+                } else {
+                    progress_callback_(current, -1);
+                }
+            }
+        })
+        .await
+    {
         platform_log(
             LOG_TAG,
             format!(
@@ -930,6 +969,7 @@ fn upload_file_actual_content_post<'a, 'b: 'a>(
     gba_context: &'b Arc<GbaContext>,
     security_context: &'b Arc<SecurityContext>,
     digest_answer: Option<&'a DigestAnswerParams>,
+    progress_callback: &'b Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> BoxFuture<'a, Result<String, FileUploadError>> {
     async move {
         upload_file_actual_content_post_inner(
@@ -943,6 +983,7 @@ fn upload_file_actual_content_post<'a, 'b: 'a>(
             gba_context,
             security_context,
             digest_answer,
+            progress_callback,
         )
         .await
     }
@@ -959,6 +1000,7 @@ async fn upload_file_initial_empty_post_inner(
     http_client: &Arc<HttpClient>,
     gba_context: &Arc<GbaContext>,
     security_context: &Arc<SecurityContext>,
+    progress_callback: &Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> Result<String, FileUploadError> {
     let host = url.host_str().unwrap();
 
@@ -971,7 +1013,7 @@ async fn upload_file_initial_empty_post_inner(
         ));
     }
 
-    if let Ok((resp, _)) = conn.send(req).await {
+    if let Ok((resp, _)) = conn.send(req, |_| {}).await {
         platform_log(
             LOG_TAG,
             format!(
@@ -992,6 +1034,7 @@ async fn upload_file_initial_empty_post_inner(
                 gba_context,
                 security_context,
                 None,
+                progress_callback,
             )
             .await;
         } else if resp.status_code == 401 {
@@ -1023,6 +1066,7 @@ async fn upload_file_initial_empty_post_inner(
                         gba_context,
                         security_context,
                         Some(&authorization),
+                        progress_callback,
                     )
                     .await;
                 }
@@ -1051,6 +1095,7 @@ fn upload_file_initial_empty_post<'a, 'b: 'a>(
     http_client: &'b Arc<HttpClient>,
     gba_context: &'b Arc<GbaContext>,
     security_context: &'b Arc<SecurityContext>,
+    progress_callback: &'b Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> BoxFuture<'a, Result<String, FileUploadError>> {
     async move {
         upload_file_initial_empty_post_inner(
@@ -1063,6 +1108,7 @@ fn upload_file_initial_empty_post<'a, 'b: 'a>(
             http_client,
             gba_context,
             security_context,
+            progress_callback,
         )
         .await
     }
@@ -1078,6 +1124,7 @@ async fn upload_file_inner(
     http_client: &Arc<HttpClient>,
     gba_context: &Arc<GbaContext>,
     security_context: &Arc<SecurityContext>,
+    progress_callback: &Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> Result<String, FileUploadError> {
     platform_log(LOG_TAG, "calling upload_file_inner()");
 
@@ -1093,6 +1140,7 @@ async fn upload_file_inner(
                 http_client,
                 gba_context,
                 security_context,
+                progress_callback,
             )
             .await;
         }
@@ -1120,6 +1168,7 @@ pub fn upload_file<'a, 'b: 'a>(
     http_client: &'b Arc<HttpClient>,
     gba_context: &'b Arc<GbaContext>,
     security_context: &'b Arc<SecurityContext>,
+    progress_callback: &'b Arc<Box<dyn Fn(u32, i32) + Send + Sync>>,
 ) -> BoxFuture<'a, Result<String, FileUploadError>> {
     let mut is_known_task = false;
 
@@ -1148,6 +1197,7 @@ pub fn upload_file<'a, 'b: 'a>(
                 http_client,
                 gba_context,
                 security_context,
+                progress_callback,
             )
             .await
         }
@@ -1163,6 +1213,7 @@ pub fn upload_file<'a, 'b: 'a>(
                 http_client,
                 gba_context,
                 security_context,
+                progress_callback,
             )
             .await
         }
