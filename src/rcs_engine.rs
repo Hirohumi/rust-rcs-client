@@ -14,60 +14,40 @@
 
 extern crate libc;
 
-use std::net::IpAddr;
 use std::net::Ipv4Addr;
 use std::net::Ipv6Addr;
+#[cfg(not(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+)))]
 use std::net::SocketAddrV4;
+#[cfg(not(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+)))]
 use std::net::SocketAddrV6;
-use std::net::TcpStream;
-use std::os::unix::net::SocketAddr;
-// use std::os::unix::prelude::AsRawFd;
 use std::sync::Arc;
 use std::sync::Mutex;
-// use std::sync::Weak;
-
-// use libc::sa_family_t;
-// use libc::sockaddr;
-// use libc::sockaddr_in;
-// use libc::sockaddr_in6;
-// use libc::sockaddr_storage;
-use libc::AF_INET;
-use libc::AF_INET6;
-use libc::IPPROTO_TCP;
-use libc::SOCK_STREAM;
 
 use futures::StreamExt;
 
-// use rust_rcs_core::ffi::log::platform_log;
-
-// use rust_rcs_core::ffi::sock::get_in6addr_any;
-// use rust_rcs_core::ffi::sock::get_inaddr_any;
-// use rust_rcs_core::ffi::sock::ntop;
-// use rust_rcs_core::internet::body::Body;
-
 use rust_rcs_core::ffi::log::platform_log;
 use rust_rcs_core::http::HttpClient;
+#[cfg(all(feature = "android", target_os = "android"))]
 use rust_rcs_core::io::network::android_socket::AndroidTcpStream;
-use rust_rcs_core::io::network::stream::AndroidStream;
 use rust_rcs_core::io::network::stream::ClientSocket;
 use rust_rcs_core::io::network::stream::ClientStream;
-// use rust_rcs_core::msrp::MsrpChannelManager;
-// use rust_rcs_core::msrp::MsrpTransportFactory;
 
-use rust_rcs_core::io::network::stream::TokioStream;
 use rust_rcs_core::msrp::info::MsrpInfo;
-// use rust_rcs_core::msrp::info::msrp_info_reader::AsMsrpInfo;
 use rust_rcs_core::msrp::info::MsrpInterfaceType;
 use rust_rcs_core::msrp::info::MsrpSetupMethod;
 use rust_rcs_core::security::gba::GbaContext;
 use rust_rcs_core::security::SecurityContext;
-// use rust_rcs_core::sdp::AsSDP;
 use rust_rcs_core::sip::SipCore;
 use rust_rcs_core::sip::SipTransactionManager;
-// use rust_rcs_core::sip::SipTransactionManagerControlInterface;
 
 use rust_rcs_core::sip::sip_subscription::SubscriptionManager;
-use rust_rcs_core::sip::sip_transport::{setup_sip_transport, SipTransportType};
+use rust_rcs_core::sip::sip_transport::setup_sip_transport;
 use rust_rcs_core::sip::SipTransport;
 use rust_rcs_core::sip::TransactionHandler;
 use rust_rcs_core::sip::ACK;
@@ -79,10 +59,14 @@ use rust_rcs_core::sip::NOTIFY;
 use rust_rcs_core::sip::OPTIONS;
 use rust_rcs_core::sip::UPDATE;
 
+#[cfg(not(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+)))]
 use tokio::net::TcpSocket;
 use tokio::runtime::Runtime;
-use tokio::sync::mpsc;
 
+use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 
 use url::Url;
@@ -217,10 +201,11 @@ impl RcsEngine {
         // let (tm, tm_control_itf, tm_event_itf) = SipTransactionManager::new(rt);
         let (tm, tm_event_itf) = SipTransactionManager::new(&rt);
 
-        let dns_client = context.get_dns_client();
+        #[cfg(not(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        )))]
         let tls_client_config = context.get_tls_client_config();
-        let tls_client_config_1 = Arc::clone(&tls_client_config);
-        let tls_client_config_2 = Arc::clone(&tls_client_config);
 
         let msrp_connection_config = MsrpConnectionConfig::new();
         let msrp_connection_config = Arc::new(Mutex::new(msrp_connection_config));
@@ -397,7 +382,13 @@ impl RcsEngine {
 
         let msrp_socket_connect_function_impl =
             move |sock: ClientSocket, raddr: String, rport: u16, tls: bool| {
+                #[cfg(not(any(
+                    all(feature = "android", target_os = "android"),
+                    all(feature = "ohos", target_os = "ohos")
+                )))]
+                let tls_client_config_ = Arc::clone(&tls_client_config);
                 return Box::pin(async move {
+                    #[cfg(all(feature = "android", target_os = "android"))]
                     if let Ok(ip) = raddr.parse() {
                         if tls {
                             match sock.configure_tls(&raddr) {
@@ -406,7 +397,7 @@ impl RcsEngine {
                                         return Ok(cs);
                                     }
                                 }
-                                Err(e) => return Err((500, "")),
+                                Err(_) => return Err((500, "")),
                             }
                         } else {
                             if let Ok(cs) = sock.connect(ip, rport).await {
@@ -415,20 +406,26 @@ impl RcsEngine {
                         }
                     }
 
-                    // let tls_client_config = Arc::clone(&tls_client_config_1);
-                    // if let Ok(_) = sock.connect(&raddr, rport) {
-                    //     let stream: std::net::TcpStream = sock.into();
-                    //     if let Ok(stream) = tokio::net::TcpStream::from_std(stream) {
-                    //         if let Ok(cs) = if tls {
-                    //             ClientStream::new_tokio_ssl_connected(tls_client_config, stream, &raddr)
-                    //                 .await
-                    //         } else {
-                    //             ClientStream::new_tokio_connected(stream).await
-                    //         } {
-                    //             return Ok(cs);
-                    //         }
-                    //     }
-                    // }
+                    #[cfg(not(any(
+                        all(feature = "android", target_os = "android"),
+                        all(feature = "ohos", target_os = "ohos")
+                    )))]
+                    if let Ok(ip) = raddr.parse() {
+                        if tls {
+                            match sock.configure_tls(tls_client_config_, &raddr) {
+                                Ok(cc) => {
+                                    if let Ok(cs) = sock.connect(ip, rport, Some(cc)).await {
+                                        return Ok(cs);
+                                    }
+                                }
+                                Err(_) => return Err((500, "")),
+                            }
+                        } else {
+                            if let Ok(cs) = sock.connect(ip, rport, None).await {
+                                return Ok(cs);
+                            }
+                        }
+                    }
 
                     Err((500, "Server Internal Error"))
                 });
@@ -854,6 +851,10 @@ impl RcsEngine {
 
                     let service_name = service_type.get_string_repr();
 
+                    #[cfg(not(any(
+                        all(feature = "android", target_os = "android"),
+                        all(feature = "ohos", target_os = "ohos")
+                    )))]
                     let tls_client_config = context.get_tls_client_config();
 
                     if let Ok(mut stream) = if let Some(port) = known_port {
@@ -909,7 +910,16 @@ impl RcsEngine {
                                     }
                                     if let Some(cs) = match service_type {
                                         ServiceType::SipD2T => {
-                                            match ClientStream::new_android(addr, port).await {
+                                            #[cfg(all(feature = "android", target_os = "android"))]
+                                            let r = ClientStream::new_android(addr, port).await;
+
+                                            #[cfg(not(any(
+                                                all(feature = "android", target_os = "android"),
+                                                all(feature = "ohos", target_os = "ohos")
+                                            )))]
+                                            let r = ClientStream::new_tokio(addr, port).await;
+
+                                            match r {
                                                 Ok(cs) => Some(cs),
                                                 Err(e) => {
                                                     platform_log(LOG_TAG, format!("error creating client stream: {:?}", e));
@@ -918,7 +928,8 @@ impl RcsEngine {
                                             }
                                         }
                                         ServiceType::SipsD2T => {
-                                            match ClientStream::new_android_ssl(
+                                            #[cfg(all(feature = "android", target_os = "android"))]
+                                            let r = ClientStream::new_android_ssl(
                                                 addr,
                                                 port,
                                                 if let Some(host) = &known_host {
@@ -927,7 +938,25 @@ impl RcsEngine {
                                                     &target
                                                 },
                                             )
-                                            .await
+                                            .await;
+
+                                            #[cfg(not(any(
+                                                all(feature = "android", target_os = "android"),
+                                                all(feature = "ohos", target_os = "ohos")
+                                            )))]
+                                            let r = ClientStream::new_tokio_ssl(
+                                                Arc::clone(&tls_client_config),
+                                                addr,
+                                                port,
+                                                if let Some(host) = &known_host {
+                                                    host
+                                                } else {
+                                                    &target
+                                                },
+                                            )
+                                            .await;
+
+                                            match r
                                             {
                                                 Ok(cs) => match cs.do_handshake().await {
                                                     Ok((cs, _)) => {
@@ -955,18 +984,7 @@ impl RcsEngine {
 
                                         let t = SipTransport::new::<ClientStream>(
                                             transport_address.clone(),
-
-                                            #[cfg(all(feature = "android", target_os = "android"))]
-                                            match &cs.0 {
-                                                AndroidStream::Tcp(_) => SipTransportType::TCP,
-                                                AndroidStream::Tls(_, _) => SipTransportType::TLS,
-                                            },
-
-                                            #[cfg(not(any(all(feature = "android", target_os = "android"), all(feature = "ohos", target_os = "ohos"))))]
-                                            match &cs.0 {
-                                                Tokio::Tcp(_) => SipTransportType::TCP,
-                                                Tokio::Tls(_, _, _) => SipTransportType::TLS,
-                                            },
+                                            cs.get_sip_transport_type(),
                                         );
 
                                         let state_ec = Arc::clone(&state_);
