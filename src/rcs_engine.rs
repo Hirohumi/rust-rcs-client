@@ -14,7 +14,13 @@
 
 extern crate libc;
 
-// use std::net::Ipv6Addr;
+use std::net::IpAddr;
+use std::net::Ipv4Addr;
+use std::net::Ipv6Addr;
+use std::net::SocketAddrV4;
+use std::net::SocketAddrV6;
+use std::net::TcpStream;
+use std::os::unix::net::SocketAddr;
 // use std::os::unix::prelude::AsRawFd;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -41,8 +47,9 @@ use futures::StreamExt;
 
 use rust_rcs_core::ffi::log::platform_log;
 use rust_rcs_core::http::HttpClient;
-use rust_rcs_core::io::network::sock::NativeSocket;
+use rust_rcs_core::io::network::android_socket::AndroidTcpStream;
 use rust_rcs_core::io::network::stream::AndroidStream;
+use rust_rcs_core::io::network::stream::ClientSocket;
 use rust_rcs_core::io::network::stream::ClientStream;
 // use rust_rcs_core::msrp::MsrpChannelManager;
 // use rust_rcs_core::msrp::MsrpTransportFactory;
@@ -72,6 +79,7 @@ use rust_rcs_core::sip::NOTIFY;
 use rust_rcs_core::sip::OPTIONS;
 use rust_rcs_core::sip::UPDATE;
 
+use tokio::net::TcpSocket;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 
@@ -242,38 +250,92 @@ impl RcsEngine {
                         match msrp_info.setup_method {
                             MsrpSetupMethod::Passive => match msrp_info.interface_type {
                                 MsrpInterfaceType::IPv4 => {
-                                    if let Ok(sock) =
-                                        NativeSocket::create(AF_INET, SOCK_STREAM, IPPROTO_TCP)
-                                    {
-                                        if let Ok((network_address, port)) =
-                                            sock.bind_interface(AF_INET)
+                                    #[cfg(all(feature = "android", target_os = "android"))]
+                                    if let Ok(sock) = AndroidTcpStream::create() {
+                                        // to-do: the socket
+                                        if let Ok(_) =
+                                            sock.bind(&Ipv4Addr::UNSPECIFIED.to_string(), 0)
                                         {
-                                            return Ok((
-                                                sock,
-                                                network_address,
-                                                port,
-                                                tls,
-                                                true,
-                                                false,
-                                            ));
+                                            if let Ok((ip, port)) = sock.get_local_addr() {
+                                                return Ok((
+                                                    ClientSocket(sock),
+                                                    ip,
+                                                    port,
+                                                    tls,
+                                                    true,
+                                                    false,
+                                                ));
+                                            }
+                                        }
+                                    }
+
+                                    #[cfg(not(any(
+                                        all(feature = "android", target_os = "android"),
+                                        all(feature = "ohos", target_os = "ohos")
+                                    )))]
+                                    if let Ok(sock) = TcpSocket::new_v4() {
+                                        if let Ok(()) = sock.bind(std::net::SocketAddr::V4(
+                                            SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0),
+                                        )) {
+                                            if let Ok(addr) = sock.local_addr() {
+                                                let ip = match addr.ip() {
+                                                    std::net::IpAddr::V4(v4) => format!("{}", v4),
+                                                    std::net::IpAddr::V6(v6) => format!("{}", v6),
+                                                };
+                                                return Ok((
+                                                    ClientSocket(sock),
+                                                    ip,
+                                                    addr.port(),
+                                                    tls,
+                                                    true,
+                                                    false,
+                                                ));
+                                            }
                                         }
                                     }
                                 }
+
                                 MsrpInterfaceType::IPv6 => {
-                                    if let Ok(sock) =
-                                        NativeSocket::create(AF_INET6, SOCK_STREAM, IPPROTO_TCP)
-                                    {
-                                        if let Ok((network_address, port)) =
-                                            sock.bind_interface(AF_INET6)
+                                    #[cfg(all(feature = "android", target_os = "android"))]
+                                    if let Ok(sock) = AndroidTcpStream::create() {
+                                        if let Ok(_) =
+                                            sock.bind(&Ipv6Addr::UNSPECIFIED.to_string(), 0)
                                         {
-                                            return Ok((
-                                                sock,
-                                                network_address,
-                                                port,
-                                                tls,
-                                                true,
-                                                true,
-                                            ));
+                                            if let Ok((ip, port)) = sock.get_local_addr() {
+                                                return Ok((
+                                                    ClientSocket(sock),
+                                                    ip,
+                                                    port,
+                                                    tls,
+                                                    true,
+                                                    false,
+                                                ));
+                                            }
+                                        }
+                                    }
+
+                                    #[cfg(not(any(
+                                        all(feature = "android", target_os = "android"),
+                                        all(feature = "ohos", target_os = "ohos")
+                                    )))]
+                                    if let Ok(sock) = TcpSocket::new_v6() {
+                                        if let Ok(()) = sock.bind(std::net::SocketAddr::V6(
+                                            SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
+                                        )) {
+                                            if let Ok(addr) = sock.local_addr() {
+                                                let ip = match addr.ip() {
+                                                    std::net::IpAddr::V4(v4) => format!("{}", v4),
+                                                    std::net::IpAddr::V6(v6) => format!("{}", v6),
+                                                };
+                                                return Ok((
+                                                    ClientSocket(sock),
+                                                    ip,
+                                                    addr.port(),
+                                                    tls,
+                                                    true,
+                                                    false,
+                                                ));
+                                            }
                                         }
                                     }
                                 }
@@ -286,9 +348,38 @@ impl RcsEngine {
                     }
 
                     None => {
-                        if let Ok(sock) = NativeSocket::create(AF_INET, SOCK_STREAM, IPPROTO_TCP) {
-                            if let Ok((network_address, port)) = sock.bind_interface(AF_INET) {
-                                return Ok((sock, network_address, port, tls, true, false));
+                        #[cfg(all(feature = "android", target_os = "android"))]
+                        if let Ok(sock) = AndroidTcpStream::create() {
+                            if let Ok(_) = sock.bind(&Ipv4Addr::UNSPECIFIED.to_string(), 0) {
+                                if let Ok((ip, port)) = sock.get_local_addr() {
+                                    return Ok((ClientSocket(sock), ip, port, tls, true, false));
+                                }
+                            }
+                        }
+
+                        #[cfg(not(any(
+                            all(feature = "android", target_os = "android"),
+                            all(feature = "ohos", target_os = "ohos")
+                        )))]
+                        if let Ok(sock) = TcpSocket::new_v4() {
+                            if let Ok(()) = sock.bind(std::net::SocketAddr::V4(SocketAddrV4::new(
+                                Ipv4Addr::UNSPECIFIED,
+                                0,
+                            ))) {
+                                if let Ok(addr) = sock.local_addr() {
+                                    let ip = match addr.ip() {
+                                        std::net::IpAddr::V4(v4) => format!("{}", v4),
+                                        std::net::IpAddr::V6(v6) => format!("{}", v6),
+                                    };
+                                    return Ok((
+                                        ClientSocket(sock),
+                                        ip,
+                                        addr.port(),
+                                        tls,
+                                        true,
+                                        false,
+                                    ));
+                                }
                             }
                         }
 
@@ -304,26 +395,44 @@ impl RcsEngine {
         let msrp_socket_allocator_function_impl_2 =
             Arc::clone(&msrp_socket_allocator_function_impl_1);
 
-        let msrp_socket_connect_function_impl = move |sock: NativeSocket, raddr, rport, tls| {
-            let tls_client_config = Arc::clone(&tls_client_config_1);
-            return Box::pin(async move {
-                if let Ok(_) = sock.connect(&raddr, rport) {
-                    let stream: std::net::TcpStream = sock.into();
-                    if let Ok(stream) = tokio::net::TcpStream::from_std(stream) {
-                        if let Ok(cs) = if tls {
-                            ClientStream::new_tokio_ssl_connected(tls_client_config, stream, &raddr)
-                                .await
+        let msrp_socket_connect_function_impl =
+            move |sock: ClientSocket, raddr: String, rport: u16, tls: bool| {
+                return Box::pin(async move {
+                    if let Ok(ip) = raddr.parse() {
+                        if tls {
+                            match sock.configure_tls(&raddr) {
+                                Ok(sock) => {
+                                    if let Ok(cs) = sock.connect(ip, rport).await {
+                                        return Ok(cs);
+                                    }
+                                }
+                                Err(e) => return Err((500, "")),
+                            }
                         } else {
-                            ClientStream::new_tokio_connected(stream).await
-                        } {
-                            return Ok(cs);
+                            if let Ok(cs) = sock.connect(ip, rport).await {
+                                return Ok(cs);
+                            }
                         }
                     }
-                }
 
-                Err((500, "Server Internal Error"))
-            });
-        };
+                    // let tls_client_config = Arc::clone(&tls_client_config_1);
+                    // if let Ok(_) = sock.connect(&raddr, rport) {
+                    //     let stream: std::net::TcpStream = sock.into();
+                    //     if let Ok(stream) = tokio::net::TcpStream::from_std(stream) {
+                    //         if let Ok(cs) = if tls {
+                    //             ClientStream::new_tokio_ssl_connected(tls_client_config, stream, &raddr)
+                    //                 .await
+                    //         } else {
+                    //             ClientStream::new_tokio_connected(stream).await
+                    //         } {
+                    //             return Ok(cs);
+                    //         }
+                    //     }
+                    // }
+
+                    Err((500, "Server Internal Error"))
+                });
+            };
 
         let message_callback_impl_1 = Arc::new(message_callback);
         let message_callback_impl_2 = Arc::clone(&message_callback_impl_1);
@@ -846,11 +955,17 @@ impl RcsEngine {
 
                                         let t = SipTransport::new::<ClientStream>(
                                             transport_address.clone(),
-                                            match &cs {
-                                                ClientStream::AndroidNative(AndroidStream::Tcp(_)) => SipTransportType::TCP,
-                                                ClientStream::AndroidNative(AndroidStream::Tls(_, _)) => SipTransportType::TLS,
-                                                ClientStream::Tokio(TokioStream::Tcp(_)) => SipTransportType::TCP,
-                                                ClientStream::Tokio(TokioStream::Tls(_, _, _)) => SipTransportType::TLS,
+
+                                            #[cfg(all(feature = "android", target_os = "android"))]
+                                            match &cs.0 {
+                                                AndroidStream::Tcp(_) => SipTransportType::TCP,
+                                                AndroidStream::Tls(_, _) => SipTransportType::TLS,
+                                            },
+
+                                            #[cfg(not(any(all(feature = "android", target_os = "android"), all(feature = "ohos", target_os = "ohos"))))]
+                                            match &cs.0 {
+                                                Tokio::Tcp(_) => SipTransportType::TCP,
+                                                Tokio::Tls(_, _, _) => SipTransportType::TLS,
                                             },
                                         );
 

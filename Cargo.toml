@@ -4,6 +4,7 @@ version = "0.4.0"
 edition = "2021"
 description = "A simple, workable RCS client library."
 license = "Apache-2.0"
+resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -34,3 +35,8 @@ url = { version = "2.5" }
 urlencoding = { version = "2.1" }
 uuid = { version = "1.6", features = ["v4"] }
 walkdir = { version = "2.4" }
+
+[features]
+default = []
+android = ["rust-rcs-core/android"]
+ohos = ["rust-rcs-core/ohos"]

@@ -24,7 +24,10 @@ pub struct StateChangeCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn state_change_callback_context_release(context: *mut StateChangeCallbackContext);
 }
@@ -33,9 +36,15 @@ pub struct StateChangeCallbackContextWrapper(pub NonNull<StateChangeCallbackCont
 
 impl Drop for StateChangeCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             state_change_callback_context_release(cb_context);
         }
@@ -62,7 +71,10 @@ pub struct MessageCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn message_callback_context_release(context: *mut MessageCallbackContext);
 }
@@ -71,9 +83,15 @@ pub struct MessageCallbackContextWrapper(pub NonNull<MessageCallbackContext>);
 
 impl Drop for MessageCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             message_callback_context_release(cb_context);
         }

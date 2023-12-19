@@ -42,7 +42,10 @@ pub struct MultiConferenceV1InviteHandlerContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn multi_conference_v1_invite_handler_context_release(
         handler_context: *mut MultiConferenceV1InviteHandlerContext,
@@ -55,9 +58,15 @@ pub struct MultiConferenceV1InviteHandlerContextWrapper(
 
 impl Drop for MultiConferenceV1InviteHandlerContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let handler_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             multi_conference_v1_invite_handler_context_release(handler_context);
         }
@@ -99,7 +108,10 @@ pub struct MultiConferenceEventListenerContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn multi_conference_v1_event_listener_context_release(
         context: *mut MultiConferenceEventListenerContext,
@@ -112,9 +124,15 @@ pub struct MultiConferenceEventListenerContextWrapper(
 
 impl Drop for MultiConferenceEventListenerContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             multi_conference_v1_event_listener_context_release(cb_context);
         }
@@ -167,7 +185,10 @@ pub struct MultiConferenceCreateResultCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn multi_conference_v1_create_result_callback_context_release(
         context: *mut MultiConferenceCreateResultCallbackContext,
@@ -180,9 +201,15 @@ pub struct MultiConferenceCreateResultCallbackContextWrapper(
 
 impl Drop for MultiConferenceCreateResultCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             multi_conference_v1_create_result_callback_context_release(cb_context);
         }
@@ -204,7 +231,10 @@ pub struct MultiConferenceJoinResultCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn multi_conference_v1_join_result_callback_context_release(
         context: *mut MultiConferenceJoinResultCallbackContext,
@@ -217,9 +247,15 @@ pub struct MultiConferenceJoinResultCallbackContextWrapper(
 
 impl Drop for MultiConferenceJoinResultCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             multi_conference_v1_join_result_callback_context_release(cb_context);
         }

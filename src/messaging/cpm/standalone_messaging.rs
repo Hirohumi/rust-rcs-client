@@ -18,12 +18,12 @@ use std::io::Read;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
+use base64::{engine::general_purpose, Engine as _};
 use futures::Future;
 use rust_rcs_core::ffi::log::platform_log;
 use rust_rcs_core::internet::body::multipart_body::MultipartBody;
 use rust_rcs_core::internet::body::VectorReader;
-use rust_rcs_core::io::network::sock::NativeSocket;
-use rust_rcs_core::io::network::stream::ClientStream;
+use rust_rcs_core::io::network::stream::{ClientSocket, ClientStream};
 use rust_rcs_core::msrp::info::msrp_info_reader::AsMsrpInfo;
 use rust_rcs_core::msrp::info::{MsrpDirection, MsrpInfo, MsrpInterfaceType, MsrpSetupMethod};
 use rust_rcs_core::msrp::msrp_channel::MsrpChannel;
@@ -89,7 +89,7 @@ struct StandaloneLargeModeSendSession {
         Mutex<(
             Arc<Body>,
             Arc<Body>,
-            Option<NativeSocket>,
+            Option<ClientSocket>,
             bool,
             String,
             u16,
@@ -108,7 +108,7 @@ impl StandaloneLargeModeSendSession {
     pub fn new(
         l_sdp: Arc<Body>,
         r_sdp: Arc<Body>,
-        sock: NativeSocket,
+        sock: ClientSocket,
         tls: bool,
         laddr: String,
         lport: u16,
@@ -141,7 +141,7 @@ impl StandaloneLargeModeSendSession {
         message_result_callback: &Arc<dyn Fn(u16, String) + Send + Sync + 'static>,
         connect_function: &Arc<
             dyn Fn(
-                    NativeSocket,
+                    ClientSocket,
                     &String,
                     u16,
                     bool,
@@ -298,7 +298,7 @@ struct StandaloneLargeModeReceiveSession {
         Mutex<(
             Arc<Body>,
             Arc<Body>,
-            Option<NativeSocket>,
+            Option<ClientSocket>,
             bool,
             String,
             u16,
@@ -319,7 +319,7 @@ impl StandaloneLargeModeReceiveSession {
     pub fn new(
         l_sdp: Arc<Body>,
         r_sdp: Arc<Body>,
-        sock: NativeSocket,
+        cs: ClientSocket,
         tls: bool,
         laddr: String,
         lport: u16,
@@ -334,7 +334,7 @@ impl StandaloneLargeModeReceiveSession {
             state: Arc::new(Mutex::new((
                 l_sdp,
                 r_sdp,
-                Some(sock),
+                Some(cs),
                 tls,
                 laddr,
                 lport,
@@ -356,7 +356,7 @@ impl StandaloneLargeModeReceiveSession {
         >,
         connect_function: &Arc<
             dyn Fn(
-                    NativeSocket,
+                    ClientSocket,
                     &String,
                     u16,
                     bool,
@@ -482,7 +482,7 @@ impl MsrpDataWriter for StandaloneLargeModeMessageDataWriter {
                                             };
                                             if base64_encoded {
                                                 if let Ok(decoded_content_body) =
-                                                    base64::decode(content_body)
+                                                    general_purpose::STANDARD.decode(content_body)
                                                 {
                                                     message_receive_listener(
                                                         &self.contact_uri,
@@ -523,7 +523,7 @@ impl MsrpDataWriter for StandaloneLargeModeMessageDataWriter {
                                         };
 
                                         if e {
-                                            if let Ok(d) = base64::decode(b) {
+                                            if let Ok(d) = general_purpose::STANDARD.decode(b) {
                                                 message_receive_listener(
                                                     &self.contact_uri,
                                                     &cpim_info,
@@ -595,13 +595,13 @@ pub struct StandaloneMessagingService {
         dyn Fn(
                 Option<&MsrpInfo>,
             )
-                -> Result<(NativeSocket, String, u16, bool, bool, bool), (u16, &'static str)>
+                -> Result<(ClientSocket, String, u16, bool, bool, bool), (u16, &'static str)>
             + Send
             + Sync,
     >,
     msrp_socket_connect_function: Arc<
         dyn Fn(
-                NativeSocket,
+                ClientSocket,
                 &String,
                 u16,
                 bool,
@@ -623,12 +623,12 @@ impl StandaloneMessagingService {
         MAF: Fn(
                 Option<&MsrpInfo>,
             )
-                -> Result<(NativeSocket, String, u16, bool, bool, bool), (u16, &'static str)>
+                -> Result<(ClientSocket, String, u16, bool, bool, bool), (u16, &'static str)>
             + Send
             + Sync
             + 'static,
         MCF: Fn(
-                NativeSocket,
+                ClientSocket,
                 &String,
                 u16,
                 bool,
@@ -1901,7 +1901,9 @@ impl TransactionHandler for StandaloneMessagingServiceWrapper {
                                             };
 
                                             if encoded {
-                                                if let Ok(decoded_body) = base64::decode(body) {
+                                                if let Ok(decoded_body) =
+                                                    general_purpose::STANDARD.decode(body)
+                                                {
                                                     (self.service.message_receive_listener)(
                                                         &contact_uri,
                                                         &message_info,
@@ -2254,7 +2256,7 @@ struct StandaloneLargeModeReceiveSessionDialogEventReceiver {
     message_receive_listener: Arc<dyn Fn(&[u8], &CPIMInfo, &[u8], &[u8]) + Send + Sync>,
     connect_function: Arc<
         dyn Fn(
-                NativeSocket,
+                ClientSocket,
                 &String,
                 u16,
                 bool,

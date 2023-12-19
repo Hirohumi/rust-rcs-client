@@ -19,6 +19,7 @@ pub mod standalone_messaging;
 
 use std::sync::Arc;
 
+use base64::{engine::general_purpose, Engine as _};
 use chrono::{DateTime, Local, SecondsFormat};
 use rust_rcs_core::{
     internet::{body::message_body::MessageBody, Body, Header},
@@ -74,7 +75,9 @@ pub fn make_cpim_message_content_body(
     message_imdn_id: Uuid,
     public_user_identity: &str,
 ) -> Body {
-    let content_body = base64::encode(message_content).into_bytes();
+    let encoded = general_purpose::STANDARD.encode(message_content);
+
+    let content_body = Vec::from(encoded);
     let content_body_length = content_body.len();
 
     let mut content_headers = Vec::new();

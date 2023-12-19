@@ -335,7 +335,10 @@ pub struct AutoConfigCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn auto_config_callback_context_release(context: *mut AutoConfigCallbackContext);
 }
@@ -344,9 +347,15 @@ struct AutoConfigCallbackContextWrapper(NonNull<AutoConfigCallbackContext>);
 
 impl Drop for AutoConfigCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             auto_config_callback_context_release(cb_context);
         }

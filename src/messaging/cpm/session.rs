@@ -19,6 +19,7 @@ use std::io::Read;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 
+use base64::{engine::general_purpose, Engine as _};
 use futures::Future;
 
 use rust_rcs_core::cpim::{CPIMInfo, CPIMMessage};
@@ -31,8 +32,7 @@ use rust_rcs_core::internet::{header, Header};
 use rust_rcs_core::internet::headers::{AsContentType, Supported};
 
 use rust_rcs_core::internet::name_addr::AsNameAddr;
-use rust_rcs_core::io::network::sock::NativeSocket;
-use rust_rcs_core::io::network::stream::ClientStream;
+use rust_rcs_core::io::network::stream::{ClientSocket, ClientStream};
 use rust_rcs_core::io::{DynamicChain, Serializable};
 use rust_rcs_core::msrp::info::msrp_info_reader::AsMsrpInfo;
 use rust_rcs_core::msrp::info::{MsrpDirection, MsrpInfo, MsrpInterfaceType, MsrpSetupMethod};
@@ -354,7 +354,7 @@ pub fn get_cpm_session_info_from_message(
 
 enum CPMSessionNegotiationState {
     NoneSet,
-    LocalSet(Arc<Body>, Option<NativeSocket>, bool, String, u16, Vec<u8>),
+    LocalSet(Arc<Body>, Option<ClientSocket>, bool, String, u16, Vec<u8>),
     RemoteSet(Arc<Body>, String, u16, Vec<u8>),
 }
 
@@ -363,7 +363,7 @@ enum CPMSessionState {
     Negotiated(
         Arc<Body>,
         Arc<Body>,
-        Option<NativeSocket>,
+        Option<ClientSocket>,
         bool,
         String,
         u16,
@@ -417,7 +417,7 @@ impl CPMSession {
     pub fn set_local_sdp(
         &self,
         l_sdp: Arc<Body>,
-        sock: NativeSocket,
+        cs: ClientSocket,
         tls: bool,
         laddr: String,
         lport: u16,
@@ -429,7 +429,7 @@ impl CPMSession {
                 CPMSessionNegotiationState::NoneSet => {
                     *guard = CPMSessionState::Negotiating(CPMSessionNegotiationState::LocalSet(
                         l_sdp,
-                        Some(sock),
+                        Some(cs),
                         tls,
                         laddr,
                         lport,
@@ -449,7 +449,7 @@ impl CPMSession {
                     *guard = CPMSessionState::Negotiated(
                         l_sdp,
                         Arc::clone(r_sdp),
-                        Some(sock),
+                        Some(cs),
                         tls,
                         laddr,
                         lport,
@@ -519,7 +519,7 @@ impl CPMSession {
         message_receive_listener: MRL,
         connect_function: &Arc<
             dyn Fn(
-                    NativeSocket,
+                    ClientSocket,
                     &String,
                     u16,
                     bool,
@@ -768,7 +768,9 @@ impl MsrpDataWriter for CPMSessionCPIMMessageWriter {
                             };
 
                             if base64_encoded {
-                                if let Ok(decoded_content_body) = base64::decode(content_body) {
+                                if let Ok(decoded_content_body) =
+                                    general_purpose::STANDARD.decode(content_body)
+                                {
                                     (self.message_callback)(
                                         &cpim_message_info,
                                         content_type,
@@ -853,7 +855,7 @@ pub struct CPMSessionService {
         dyn Fn(
                 Option<&MsrpInfo>,
             )
-                -> Result<(NativeSocket, String, u16, bool, bool, bool), (u16, &'static str)>
+                -> Result<(ClientSocket, String, u16, bool, bool, bool), (u16, &'static str)>
             + Send
             + Sync
             + 'static,
@@ -861,7 +863,7 @@ pub struct CPMSessionService {
 
     msrp_socket_connect_function: Arc<
         dyn Fn(
-                NativeSocket,
+                ClientSocket,
                 &String,
                 u16,
                 bool,
@@ -901,12 +903,12 @@ impl CPMSessionService {
         MAF: Fn(
                 Option<&MsrpInfo>,
             )
-                -> Result<(NativeSocket, String, u16, bool, bool, bool), (u16, &'static str)>
+                -> Result<(ClientSocket, String, u16, bool, bool, bool), (u16, &'static str)>
             + Send
             + Sync
             + 'static,
         MCF: Fn(
-                NativeSocket,
+                ClientSocket,
                 &String,
                 u16,
                 bool,
@@ -1702,7 +1704,7 @@ pub(crate) struct CPMSessionDialogEventReceiver {
     pub(crate) message_receive_listener: Arc<dyn Fn(&CPIMInfo, &[u8], &[u8]) + Send + Sync>,
     pub(crate) msrp_socket_connect_function: Arc<
         dyn Fn(
-                NativeSocket,
+                ClientSocket,
                 &String,
                 u16,
                 bool,

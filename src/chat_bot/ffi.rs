@@ -31,7 +31,10 @@ pub struct RetrieveSpecificChatbotsResultCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn retrieve_specific_chatbots_result_callback_context_release(
         context: *mut RetrieveSpecificChatbotsResultCallbackContext,
@@ -44,9 +47,15 @@ pub struct RetrieveSpecificChatbotsResultCallbackContextWrapper(
 
 impl Drop for RetrieveSpecificChatbotsResultCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             retrieve_specific_chatbots_result_callback_context_release(cb_context);
         }
@@ -68,7 +77,10 @@ pub struct SearchChatbotResultCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn search_chatbot_result_callback_context_release(
         context: *mut SearchChatbotResultCallbackContext,
@@ -81,9 +93,15 @@ pub struct SearchChatbotResultCallbackContextWrapper(
 
 impl Drop for SearchChatbotResultCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             search_chatbot_result_callback_context_release(cb_context);
         }
@@ -107,7 +125,10 @@ pub struct RetrieveChatbotInfoResultCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn retrieve_chatbot_info_result_callback_context_release(
         context: *mut RetrieveChatbotInfoResultCallbackContext,
@@ -120,9 +141,15 @@ pub struct RetrieveChatbotInfoResultCallbackContextWrapper(
 
 impl Drop for RetrieveChatbotInfoResultCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             retrieve_chatbot_info_result_callback_context_release(cb_context);
         }

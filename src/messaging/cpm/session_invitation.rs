@@ -27,7 +27,7 @@ use tokio::{runtime::Runtime, sync::mpsc};
 use rust_rcs_core::{
     cpim::CPIMInfo,
     internet::{Body, Header},
-    io::network::{sock::NativeSocket, stream::ClientStream},
+    io::network::stream::{ClientSocket, ClientStream},
     msrp::info::{
         msrp_info_reader::AsMsrpInfo, MsrpDirection, MsrpInfo, MsrpInterfaceType, MsrpSetupMethod,
     },
@@ -98,13 +98,13 @@ pub fn try_accept_hanging_invitation(
         dyn Fn(
                 Option<&MsrpInfo>,
             )
-                -> Result<(NativeSocket, String, u16, bool, bool, bool), (u16, &'static str)>
+                -> Result<(ClientSocket, String, u16, bool, bool, bool), (u16, &'static str)>
             + Send
             + Sync,
     >,
     msrp_socket_connect_function: &Arc<
         dyn Fn(
-                NativeSocket,
+                ClientSocket,
                 &String,
                 u16,
                 bool,
@@ -188,13 +188,13 @@ pub fn try_accept_invitation<'a, 'b>(
         dyn Fn(
                 Option<&MsrpInfo>,
             )
-                -> Result<(NativeSocket, String, u16, bool, bool, bool), (u16, &'static str)>
+                -> Result<(ClientSocket, String, u16, bool, bool, bool), (u16, &'static str)>
             + Send
             + Sync,
     >,
     msrp_socket_connect_function: &Arc<
         dyn Fn(
-                NativeSocket,
+                ClientSocket,
                 &String,
                 u16,
                 bool,
@@ -215,7 +215,7 @@ pub fn try_accept_invitation<'a, 'b>(
     rt: &Arc<Runtime>,
 ) {
     match (msrp_socket_allocator_function)(Some(&msrp_info)) {
-        Ok((sock, host, port, tls, active_setup, ipv6)) => {
+        Ok((cs, host, port, tls, active_setup, ipv6)) => {
             if let Ok(raddr) = std::str::from_utf8(msrp_info.address) {
                 let raddr = String::from(raddr);
                 let rport = msrp_info.port;
@@ -284,7 +284,7 @@ pub fn try_accept_invitation<'a, 'b>(
 
                 let r_sdp = Arc::clone(r_sdp);
                 if let Ok(_) = session.set_remote_sdp(r_sdp, raddr, rport, rpath) {
-                    if let Ok(_) = session.set_local_sdp(l_sdp, sock, tls, host, port, path) {
+                    if let Ok(_) = session.set_local_sdp(l_sdp, cs, tls, host, port, path) {
                         if let Some(mut resp_message) = server_transaction::make_response(
                             message,
                             transaction.to_tag(),

@@ -60,7 +60,10 @@ pub struct MessageResultCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn message_result_callback_context_release(context: *mut MessageResultCallbackContext);
 }
@@ -69,9 +72,15 @@ pub struct MessageResultCallbackContextWrapper(pub NonNull<MessageResultCallback
 
 impl Drop for MessageResultCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             message_result_callback_context_release(cb_context);
         }
@@ -92,7 +101,10 @@ pub struct SendImdnReportResultCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn send_imdn_report_result_callback_context_release(
         context: *mut SendImdnReportResultCallbackContext,
@@ -105,9 +117,15 @@ pub struct SendImdnReportResultCallbackContextWrapper(
 
 impl Drop for SendImdnReportResultCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             send_imdn_report_result_callback_context_release(cb_context);
         }
@@ -125,7 +143,10 @@ pub struct UploadFileProgressCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn upload_file_progress_callback_context_release(
         context: *mut UploadFileProgressCallbackContext,
@@ -136,9 +157,15 @@ pub struct UploadFileProgressCallbackContextWrapper(pub NonNull<UploadFileProgre
 
 impl Drop for UploadFileProgressCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             upload_file_progress_callback_context_release(cb_context);
         }
@@ -160,7 +187,10 @@ pub struct UploadFileResultCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn upload_file_result_callback_context_release(context: *mut UploadFileResultCallbackContext);
 }
@@ -169,9 +199,15 @@ pub struct UploadFileResultCallbackContextWrapper(pub NonNull<UploadFileResultCa
 
 impl Drop for UploadFileResultCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             upload_file_result_callback_context_release(cb_context);
         }
@@ -189,7 +225,10 @@ pub struct DownloadFileProgressCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn download_file_progress_callback_context_release(
         context: *mut DownloadFileProgressCallbackContext,
@@ -202,9 +241,15 @@ pub struct DownloadileProgressCallbackContextWrapper(
 
 impl Drop for DownloadileProgressCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             download_file_progress_callback_context_release(cb_context);
         }
@@ -225,7 +270,10 @@ pub struct DownloadFileResultCallbackContext {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+#[cfg(any(
+    all(feature = "android", target_os = "android"),
+    all(feature = "ohos", target_os = "ohos")
+))]
 extern "C" {
     fn download_file_result_callback_context_release(
         context: *mut DownloadFileResultCallbackContext,
@@ -236,9 +284,15 @@ pub struct DownloadFileResultCallbackContextWrapper(pub NonNull<DownloadFileResu
 
 impl Drop for DownloadFileResultCallbackContextWrapper {
     fn drop(&mut self) {
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         let cb_context = self.0.as_ptr();
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(
+            all(feature = "android", target_os = "android"),
+            all(feature = "ohos", target_os = "ohos")
+        ))]
         unsafe {
             download_file_result_callback_context_release(cb_context);
         }
