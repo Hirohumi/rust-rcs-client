@@ -1,6 +1,6 @@
 [package]
 name = "rust-rcs-client"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 description = "A simple, workable RCS client library."
 license = "Apache-2.0"
@@ -15,7 +15,7 @@ crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 
-rust-rcs-core = { path = "../rust-rcs-core", version = "0.2" }
+rust-rcs-core = { path = "../rust-rcs-core", version = "0.3" }
 
 rust-strict-sdp = { version = "0.1" }
 
