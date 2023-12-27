@@ -62,7 +62,7 @@ pub struct MessageResultCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn message_result_callback_context_release(context: *mut MessageResultCallbackContext);
@@ -74,12 +74,12 @@ impl Drop for MessageResultCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             message_result_callback_context_release(cb_context);
@@ -103,7 +103,7 @@ pub struct SendImdnReportResultCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn send_imdn_report_result_callback_context_release(
@@ -119,12 +119,12 @@ impl Drop for SendImdnReportResultCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             send_imdn_report_result_callback_context_release(cb_context);
@@ -145,7 +145,7 @@ pub struct UploadFileProgressCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn upload_file_progress_callback_context_release(
@@ -159,12 +159,12 @@ impl Drop for UploadFileProgressCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             upload_file_progress_callback_context_release(cb_context);
@@ -189,7 +189,7 @@ pub struct UploadFileResultCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn upload_file_result_callback_context_release(context: *mut UploadFileResultCallbackContext);
@@ -201,12 +201,12 @@ impl Drop for UploadFileResultCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             upload_file_result_callback_context_release(cb_context);
@@ -227,7 +227,7 @@ pub struct DownloadFileProgressCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn download_file_progress_callback_context_release(
@@ -243,12 +243,12 @@ impl Drop for DownloadileProgressCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             download_file_progress_callback_context_release(cb_context);
@@ -272,7 +272,7 @@ pub struct DownloadFileResultCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn download_file_result_callback_context_release(
@@ -286,12 +286,12 @@ impl Drop for DownloadFileResultCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             download_file_result_callback_context_release(cb_context);

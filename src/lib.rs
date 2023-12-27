@@ -337,7 +337,7 @@ pub struct AutoConfigCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn auto_config_callback_context_release(context: *mut AutoConfigCallbackContext);
@@ -349,12 +349,12 @@ impl Drop for AutoConfigCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             auto_config_callback_context_release(cb_context);

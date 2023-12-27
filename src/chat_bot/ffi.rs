@@ -33,7 +33,7 @@ pub struct RetrieveSpecificChatbotsResultCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn retrieve_specific_chatbots_result_callback_context_release(
@@ -49,12 +49,12 @@ impl Drop for RetrieveSpecificChatbotsResultCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             retrieve_specific_chatbots_result_callback_context_release(cb_context);
@@ -79,7 +79,7 @@ pub struct SearchChatbotResultCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn search_chatbot_result_callback_context_release(
@@ -95,12 +95,12 @@ impl Drop for SearchChatbotResultCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             search_chatbot_result_callback_context_release(cb_context);
@@ -127,7 +127,7 @@ pub struct RetrieveChatbotInfoResultCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn retrieve_chatbot_info_result_callback_context_release(
@@ -143,12 +143,12 @@ impl Drop for RetrieveChatbotInfoResultCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             retrieve_chatbot_info_result_callback_context_release(cb_context);

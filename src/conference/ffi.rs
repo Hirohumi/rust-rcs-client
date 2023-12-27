@@ -44,7 +44,7 @@ pub struct MultiConferenceV1InviteHandlerContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn multi_conference_v1_invite_handler_context_release(
@@ -60,12 +60,12 @@ impl Drop for MultiConferenceV1InviteHandlerContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let handler_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             multi_conference_v1_invite_handler_context_release(handler_context);
@@ -110,7 +110,7 @@ pub struct MultiConferenceEventListenerContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn multi_conference_v1_event_listener_context_release(
@@ -126,12 +126,12 @@ impl Drop for MultiConferenceEventListenerContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             multi_conference_v1_event_listener_context_release(cb_context);
@@ -187,7 +187,7 @@ pub struct MultiConferenceCreateResultCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn multi_conference_v1_create_result_callback_context_release(
@@ -203,12 +203,12 @@ impl Drop for MultiConferenceCreateResultCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             multi_conference_v1_create_result_callback_context_release(cb_context);
@@ -233,7 +233,7 @@ pub struct MultiConferenceJoinResultCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn multi_conference_v1_join_result_callback_context_release(
@@ -249,12 +249,12 @@ impl Drop for MultiConferenceJoinResultCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             multi_conference_v1_join_result_callback_context_release(cb_context);

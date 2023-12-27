@@ -18,23 +18,22 @@ use std::net::Ipv4Addr;
 use std::net::Ipv6Addr;
 #[cfg(not(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 )))]
-use std::net::SocketAddrV4;
-#[cfg(not(any(
-    all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
-)))]
-use std::net::SocketAddrV6;
+use std::net::{SocketAddrV4, SocketAddrV6};
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use futures::StreamExt;
 
+#[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+use libc::{AF_INET, AF_INET6};
 use rust_rcs_core::ffi::log::platform_log;
 use rust_rcs_core::http::HttpClient;
 #[cfg(all(feature = "android", target_os = "android"))]
 use rust_rcs_core::io::network::android_socket::AndroidTcpStream;
+#[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+use rust_rcs_core::io::network::ohos_socket::OhosTcpStream;
 use rust_rcs_core::io::network::stream::ClientSocket;
 use rust_rcs_core::io::network::stream::ClientStream;
 
@@ -61,7 +60,7 @@ use rust_rcs_core::sip::UPDATE;
 
 #[cfg(not(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 )))]
 use tokio::net::TcpSocket;
 use tokio::runtime::Runtime;
@@ -201,10 +200,7 @@ impl RcsEngine {
         // let (tm, tm_control_itf, tm_event_itf) = SipTransactionManager::new(rt);
         let (tm, tm_event_itf) = SipTransactionManager::new(&rt);
 
-        #[cfg(not(any(
-            all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
-        )))]
+        #[cfg(not(all(feature = "android", target_os = "android")))]
         let tls_client_config = context.get_tls_client_config();
 
         let msrp_connection_config = MsrpConnectionConfig::new();
@@ -254,9 +250,27 @@ impl RcsEngine {
                                         }
                                     }
 
+                                    #[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+                                    if let Ok(sock) = OhosTcpStream::create() {
+                                        if let Ok(_) =
+                                            sock.bind(AF_INET, &Ipv4Addr::UNSPECIFIED.to_string(), 0)
+                                        {
+                                            if let Ok((ip, port)) = sock.get_local_addr() {
+                                                return Ok((
+                                                    ClientSocket(sock),
+                                                    ip,
+                                                    port,
+                                                    tls,
+                                                    true,
+                                                    false,
+                                                ));
+                                            }
+                                        }
+                                    }
+
                                     #[cfg(not(any(
                                         all(feature = "android", target_os = "android"),
-                                        all(feature = "ohos", target_os = "ohos")
+                                        all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
                                     )))]
                                     if let Ok(sock) = TcpSocket::new_v4() {
                                         if let Ok(()) = sock.bind(std::net::SocketAddr::V4(
@@ -299,9 +313,27 @@ impl RcsEngine {
                                         }
                                     }
 
+                                    #[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+                                    if let Ok(sock) = OhosTcpStream::create() {
+                                        if let Ok(_) =
+                                            sock.bind(AF_INET6, &Ipv6Addr::UNSPECIFIED.to_string(), 0)
+                                        {
+                                            if let Ok((ip, port)) = sock.get_local_addr() {
+                                                return Ok((
+                                                    ClientSocket(sock),
+                                                    ip,
+                                                    port,
+                                                    tls,
+                                                    true,
+                                                    false,
+                                                ));
+                                            }
+                                        }
+                                    }
+
                                     #[cfg(not(any(
                                         all(feature = "android", target_os = "android"),
-                                        all(feature = "ohos", target_os = "ohos")
+                                        all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
                                     )))]
                                     if let Ok(sock) = TcpSocket::new_v6() {
                                         if let Ok(()) = sock.bind(std::net::SocketAddr::V6(
@@ -342,9 +374,18 @@ impl RcsEngine {
                             }
                         }
 
+                        #[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+                        if let Ok(sock) = OhosTcpStream::create() {
+                            if let Ok(_) = sock.bind(AF_INET, &Ipv4Addr::UNSPECIFIED.to_string(), 0) {
+                                if let Ok((ip, port)) = sock.get_local_addr() {
+                                    return Ok((ClientSocket(sock), ip, port, tls, true, false));
+                                }
+                            }
+                        }
+
                         #[cfg(not(any(
                             all(feature = "android", target_os = "android"),
-                            all(feature = "ohos", target_os = "ohos")
+                            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
                         )))]
                         if let Ok(sock) = TcpSocket::new_v4() {
                             if let Ok(()) = sock.bind(std::net::SocketAddr::V4(SocketAddrV4::new(
@@ -382,10 +423,7 @@ impl RcsEngine {
 
         let msrp_socket_connect_function_impl =
             move |sock: ClientSocket, raddr: String, rport: u16, tls: bool| {
-                #[cfg(not(any(
-                    all(feature = "android", target_os = "android"),
-                    all(feature = "ohos", target_os = "ohos")
-                )))]
+                #[cfg(not(all(feature = "android", target_os = "android")))]
                 let tls_client_config_ = Arc::clone(&tls_client_config);
                 return Box::pin(async move {
                     #[cfg(all(feature = "android", target_os = "android"))]
@@ -406,9 +444,27 @@ impl RcsEngine {
                         }
                     }
 
+                    #[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+                    if let Ok(ip) = raddr.parse() {
+                        if tls {
+                            match sock.configure_tls(tls_client_config_, &raddr) {
+                                Ok(cc) => {
+                                    if let Ok(cs) = sock.connect(ip, rport, Some(cc)).await {
+                                        return Ok(cs);
+                                    }
+                                }
+                                Err(_) => return Err((500, "")),
+                            }
+                        } else {
+                            if let Ok(cs) = sock.connect(ip, rport, None).await {
+                                return Ok(cs);
+                            }
+                        }
+                    }
+
                     #[cfg(not(any(
                         all(feature = "android", target_os = "android"),
-                        all(feature = "ohos", target_os = "ohos")
+                        all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
                     )))]
                     if let Ok(ip) = raddr.parse() {
                         if tls {
@@ -851,10 +907,7 @@ impl RcsEngine {
 
                     let service_name = service_type.get_string_repr();
 
-                    #[cfg(not(any(
-                        all(feature = "android", target_os = "android"),
-                        all(feature = "ohos", target_os = "ohos")
-                    )))]
+                    #[cfg(not(all(feature = "android", target_os = "android")))]
                     let tls_client_config = context.get_tls_client_config();
 
                     if let Ok(mut stream) = if let Some(port) = known_port {
@@ -913,9 +966,12 @@ impl RcsEngine {
                                             #[cfg(all(feature = "android", target_os = "android"))]
                                             let r = ClientStream::new_android(addr, port).await;
 
+                                            #[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+                                            let r = ClientStream::new_ohos(addr, port).await;
+
                                             #[cfg(not(any(
                                                 all(feature = "android", target_os = "android"),
-                                                all(feature = "ohos", target_os = "ohos")
+                                                all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
                                             )))]
                                             let r = ClientStream::new_tokio(addr, port).await;
 
@@ -940,9 +996,22 @@ impl RcsEngine {
                                             )
                                             .await;
 
+                                            #[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+                                            let r = ClientStream::new_ohos_ssl(
+                                                Arc::clone(&tls_client_config),
+                                                addr,
+                                                port,
+                                                if let Some(host) = &known_host {
+                                                    host
+                                                } else {
+                                                    &target
+                                                },
+                                            )
+                                            .await;
+
                                             #[cfg(not(any(
                                                 all(feature = "android", target_os = "android"),
-                                                all(feature = "ohos", target_os = "ohos")
+                                                all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
                                             )))]
                                             let r = ClientStream::new_tokio_ssl(
                                                 Arc::clone(&tls_client_config),

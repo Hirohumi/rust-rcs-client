@@ -26,7 +26,7 @@ pub struct StateChangeCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn state_change_callback_context_release(context: *mut StateChangeCallbackContext);
@@ -38,12 +38,12 @@ impl Drop for StateChangeCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             state_change_callback_context_release(cb_context);
@@ -73,7 +73,7 @@ pub struct MessageCallbackContext {
 
 #[cfg(any(
     all(feature = "android", target_os = "android"),
-    all(feature = "ohos", target_os = "ohos")
+    all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
 ))]
 extern "C" {
     fn message_callback_context_release(context: *mut MessageCallbackContext);
@@ -85,12 +85,12 @@ impl Drop for MessageCallbackContextWrapper {
     fn drop(&mut self) {
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         let cb_context = self.0.as_ptr();
         #[cfg(any(
             all(feature = "android", target_os = "android"),
-            all(feature = "ohos", target_os = "ohos")
+            all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
         ))]
         unsafe {
             message_callback_context_release(cb_context);
