@@ -498,41 +498,39 @@ pub unsafe extern "C" fn rcs_client_start_config(
                                     let cb_context_ptr = cb_context.0.as_ptr();
                                     cb(-1, ims_config, rcs_config, extra, cb_context_ptr);
                                 }
-                            }
-
-                            // DeviceConfigurationStatus::Retry(reason, timeout) => match reason {
-                            //     RetryReason::RequireOtp(port, session_host, session_cookie) => {
-                            //         if let Some(cb) = cb {
-                            //             let ims_config = ptr::null();
-                            //             let rcs_config = ptr::null();
-                            //             let session_host = session_host.as_str();
-                            //             let session_cookie = session_cookie.as_str();
-                            //             if let (Ok(extra_host), Ok(extra_cookie)) = (CString::new(session_host), CString::new(session_cookie)) {
-                            //                 let extra_host = extra_host.as_ptr();
-                            //                 let extra_cookie = extra_cookie.as_ptr();
-                            //                 let cb_context = cb_context.lock().unwrap();
-                            //                 let cb_context_ptr: *mut AutoConfigCallbackContext =
-                            //                     cb_context.0.as_ptr();
-                            //                 if port == 0 {
-                            //                     cb(2, ims_config, rcs_config, extra_host, extra_cookie, cb_context_ptr);
-                            //                 } else {
-                            //                     cb(1, ims_config, rcs_config, extra_host, extra_cookie, cb_context_ptr);
-                            //                 }
-                            //             }
-                            //         }
-                            //     }
-                            //     _ => {
-                            //         if let Some(cb) = cb {
-                            //             let ims_config = ptr::null();
-                            //             let rcs_config = ptr::null();
-                            //             let extra_host = ptr::null();
-                            //             let extra_cookie = ptr::null();    
-                            //             let cb_context = cb_context.lock().unwrap();
-                            //             let cb_context_ptr = cb_context.0.as_ptr();
-                            //             cb(-1, ims_config, rcs_config, extra_host, extra_cookie, cb_context_ptr);
-                            //         }
-                            //     }
-                            // },
+                            } // DeviceConfigurationStatus::Retry(reason, timeout) => match reason {
+                              //     RetryReason::RequireOtp(port, session_host, session_cookie) => {
+                              //         if let Some(cb) = cb {
+                              //             let ims_config = ptr::null();
+                              //             let rcs_config = ptr::null();
+                              //             let session_host = session_host.as_str();
+                              //             let session_cookie = session_cookie.as_str();
+                              //             if let (Ok(extra_host), Ok(extra_cookie)) = (CString::new(session_host), CString::new(session_cookie)) {
+                              //                 let extra_host = extra_host.as_ptr();
+                              //                 let extra_cookie = extra_cookie.as_ptr();
+                              //                 let cb_context = cb_context.lock().unwrap();
+                              //                 let cb_context_ptr: *mut AutoConfigCallbackContext =
+                              //                     cb_context.0.as_ptr();
+                              //                 if port == 0 {
+                              //                     cb(2, ims_config, rcs_config, extra_host, extra_cookie, cb_context_ptr);
+                              //                 } else {
+                              //                     cb(1, ims_config, rcs_config, extra_host, extra_cookie, cb_context_ptr);
+                              //                 }
+                              //             }
+                              //         }
+                              //     }
+                              //     _ => {
+                              //         if let Some(cb) = cb {
+                              //             let ims_config = ptr::null();
+                              //             let rcs_config = ptr::null();
+                              //             let extra_host = ptr::null();
+                              //             let extra_cookie = ptr::null();
+                              //             let cb_context = cb_context.lock().unwrap();
+                              //             let cb_context_ptr = cb_context.0.as_ptr();
+                              //             cb(-1, ims_config, rcs_config, extra_host, extra_cookie, cb_context_ptr);
+                              //         }
+                              //     }
+                              // },
                         }
                     }
                 }

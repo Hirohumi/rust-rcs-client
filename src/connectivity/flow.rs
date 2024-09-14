@@ -315,34 +315,48 @@ pub fn on_registration_authenticated<CB>(
                                                     LOG_TAG,
                                                     format!("active flow {:?}", flow),
                                                 );
-                                                if let Some(flow_uri) =
-                                                    flow.uri.as_bytes().as_name_addresses().first()
-                                                {
-                                                    if let Some(uri_part) = &flow_uri.uri_part {
-                                                        if uri
-                                                            .as_bytes()
-                                                            .equals_bytes(uri_part.uri, true)
-                                                        {
-                                                            let public_user_identity = impu.clone();
-                                                            (flow_manager_.state_callback)(
-                                                                true,
-                                                                Arc::clone(&transport_),
-                                                                Some(public_user_identity),
-                                                                Arc::clone(&registration_),
-                                                            );
 
-                                                            let expiration = Instant::now().add(
-                                                                Duration::from_secs(
-                                                                    flow.expires as u64,
-                                                                ),
-                                                            );
+                                                let mut is_current_registry = false;
 
-                                                            state_callback(SubscriptionEvent::ExpirationRefreshed(expiration));
+                                                if uri.eq_ignore_ascii_case(&flow.uri) {
+                                                    is_current_registry = true;
+                                                }
 
-                                                            return;
+                                                if !is_current_registry {
+                                                    if let Some(flow_uri) = flow.uri.as_bytes().as_name_addresses().first()
+                                                    {
+                                                        if let Some(uri_part) = &flow_uri.uri_part {
+
+                                                            if uri
+                                                                .as_bytes()
+                                                                .equals_bytes(uri_part.uri, true)
+                                                            {
+                                                                is_current_registry = true;
+                                                            }
                                                         }
                                                     }
                                                 }
+
+                                                if is_current_registry {
+                                                    let public_user_identity = impu.clone();
+                                                    (flow_manager_.state_callback)(
+                                                        true,
+                                                        Arc::clone(&transport_),
+                                                        Some(public_user_identity),
+                                                        Arc::clone(&registration_),
+                                                    );
+
+                                                    let expiration = Instant::now().add(
+                                                        Duration::from_secs(
+                                                            flow.expires as u64,
+                                                        ),
+                                                    );
+
+                                                    state_callback(SubscriptionEvent::ExpirationRefreshed(expiration));
+
+                                                    return;
+                                                }
+
                                             }
                                         }
                                         None => {}

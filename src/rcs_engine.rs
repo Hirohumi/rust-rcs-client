@@ -250,11 +250,16 @@ impl RcsEngine {
                                         }
                                     }
 
-                                    #[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+                                    #[cfg(all(
+                                        feature = "ohos",
+                                        all(target_os = "linux", target_env = "ohos")
+                                    ))]
                                     if let Ok(sock) = OhosTcpStream::create() {
-                                        if let Ok(_) =
-                                            sock.bind(AF_INET, &Ipv4Addr::UNSPECIFIED.to_string(), 0)
-                                        {
+                                        if let Ok(_) = sock.bind(
+                                            AF_INET,
+                                            &Ipv4Addr::UNSPECIFIED.to_string(),
+                                            0,
+                                        ) {
                                             if let Ok((ip, port)) = sock.get_local_addr() {
                                                 return Ok((
                                                     ClientSocket(sock),
@@ -270,7 +275,10 @@ impl RcsEngine {
 
                                     #[cfg(not(any(
                                         all(feature = "android", target_os = "android"),
-                                        all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
+                                        all(
+                                            feature = "ohos",
+                                            all(target_os = "linux", target_env = "ohos")
+                                        )
                                     )))]
                                     if let Ok(sock) = TcpSocket::new_v4() {
                                         if let Ok(()) = sock.bind(std::net::SocketAddr::V4(
@@ -313,11 +321,16 @@ impl RcsEngine {
                                         }
                                     }
 
-                                    #[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+                                    #[cfg(all(
+                                        feature = "ohos",
+                                        all(target_os = "linux", target_env = "ohos")
+                                    ))]
                                     if let Ok(sock) = OhosTcpStream::create() {
-                                        if let Ok(_) =
-                                            sock.bind(AF_INET6, &Ipv6Addr::UNSPECIFIED.to_string(), 0)
-                                        {
+                                        if let Ok(_) = sock.bind(
+                                            AF_INET6,
+                                            &Ipv6Addr::UNSPECIFIED.to_string(),
+                                            0,
+                                        ) {
                                             if let Ok((ip, port)) = sock.get_local_addr() {
                                                 return Ok((
                                                     ClientSocket(sock),
@@ -333,7 +346,10 @@ impl RcsEngine {
 
                                     #[cfg(not(any(
                                         all(feature = "android", target_os = "android"),
-                                        all(feature = "ohos", all(target_os = "linux", target_env = "ohos"))
+                                        all(
+                                            feature = "ohos",
+                                            all(target_os = "linux", target_env = "ohos")
+                                        )
                                     )))]
                                     if let Ok(sock) = TcpSocket::new_v6() {
                                         if let Ok(()) = sock.bind(std::net::SocketAddr::V6(
@@ -374,9 +390,13 @@ impl RcsEngine {
                             }
                         }
 
-                        #[cfg(all(feature = "ohos", all(target_os = "linux", target_env = "ohos")))]
+                        #[cfg(all(
+                            feature = "ohos",
+                            all(target_os = "linux", target_env = "ohos")
+                        ))]
                         if let Ok(sock) = OhosTcpStream::create() {
-                            if let Ok(_) = sock.bind(AF_INET, &Ipv4Addr::UNSPECIFIED.to_string(), 0) {
+                            if let Ok(_) = sock.bind(AF_INET, &Ipv4Addr::UNSPECIFIED.to_string(), 0)
+                            {
                                 if let Ok((ip, port)) = sock.get_local_addr() {
                                     return Ok((ClientSocket(sock), ip, port, tls, true, false));
                                 }
@@ -674,6 +694,14 @@ impl RcsEngine {
                 &sm,
                 &tm,
                 move |is_registered, transport, public_user_id, registration| {
+                    platform_log(
+                        LOG_TAG,
+                        format!(
+                            "flow_manager state_callback: is_registered={:?}, public_user_id={:?}",
+                            is_registered, &public_user_id
+                        ),
+                    );
+
                     let mut guard = state.lock().unwrap();
                     match &guard.0 {
                         RcsEngineConnectionState::CONNECTED(transport_, _) => {
@@ -696,8 +724,12 @@ impl RcsEngine {
 
                                 return;
                             }
+
+                            platform_log(LOG_TAG, "already registered on another socket");
                         }
-                        _ => {}
+                        _ => {
+                            platform_log(LOG_TAG, "already abandonned");
+                        }
                     }
 
                     if is_registered {
