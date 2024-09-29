@@ -24,7 +24,7 @@ pub mod provisioning;
 pub mod rcs_engine;
 
 use std::ffi::{CStr, CString};
-use std::ptr::{self, NonNull};
+use std::ptr::{self, null_mut, NonNull};
 use std::sync::{Arc, Mutex};
 
 // use backtrace::Backtrace;
@@ -650,16 +650,12 @@ pub unsafe extern "C" fn rcs_client_send_message(
                     move |status_code, reason_phrase| {
                         if let Some(cb) = cb {
                             let reason_phrase = CString::new(reason_phrase).unwrap();
-                            cb(
-                                status_code,
-                                reason_phrase.as_ptr(),
-                                if let Some(cb_context_) = cb_context_ {
-                                    let cb_context = cb_context_.lock().unwrap();
-                                    cb_context.0.as_ptr()
-                                } else {
-                                    ptr::null_mut()
-                                },
-                            );
+                            if let Some(cb_context_) = cb_context_ {
+                                let cb_context = cb_context_.lock().unwrap();
+                                cb(status_code, reason_phrase.as_ptr(), cb_context.0.as_ptr());
+                            } else {
+                                cb(status_code, reason_phrase.as_ptr(), ptr::null_mut());
+                            }
                         }
                     },
                     &rcs_runtime.rt,
@@ -726,16 +722,12 @@ pub unsafe extern "C" fn rcs_client_send_imdn_report(
                 move |status_code, reason_phrase| {
                     if let Some(cb) = cb {
                         let reason_phrase = CString::new(reason_phrase).unwrap();
-                        cb(
-                            status_code,
-                            reason_phrase.as_ptr(),
-                            if let Some(cb_context_) = cb_context_ {
-                                let cb_context = cb_context_.lock().unwrap();
-                                cb_context.0.as_ptr()
-                            } else {
-                                ptr::null_mut()
-                            },
-                        );
+                        if let Some(cb_context_) = cb_context_ {
+                            let cb_context = cb_context_.lock().unwrap();
+                            cb(status_code, reason_phrase.as_ptr(), cb_context.0.as_ptr());
+                        } else {
+                            cb(status_code, reason_phrase.as_ptr(), ptr::null_mut());
+                        }
                     }
                 },
             );
@@ -868,16 +860,12 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                     rt,
                     move |current, total| {
                         if let Some(progress_cb) = progress_cb {
-                            progress_cb(
-                                current,
-                                total,
-                                if let Some(progress_cb_context_) = &progress_cb_context_ {
-                                    let progress_cb_context = progress_cb_context_.lock().unwrap();
-                                    progress_cb_context.0.as_ptr()
-                                } else {
-                                    ptr::null_mut()
-                                },
-                            );
+                            if let Some(progress_cb_context_) = &progress_cb_context_ {
+                                let progress_cb_context = progress_cb_context_.lock().unwrap();
+                                progress_cb(current, total, progress_cb_context.0.as_ptr());
+                            } else {
+                                progress_cb(current, total, ptr::null_mut());
+                            }
                         }
                     },
                     move |status_code, reason_phrase, result_xml| {
@@ -889,21 +877,30 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                             } else {
                                 None
                             };
-                            result_cb(
-                                status_code,
-                                reason_phrase.as_ptr(),
-                                if let Some(result_xml) = result_xml {
-                                    result_xml.as_ptr()
-                                } else {
-                                    ptr::null()
-                                },
-                                if let Some(result_cb_context_) = result_cb_context_ {
-                                    let result_cb_context = result_cb_context_.lock().unwrap();
-                                    result_cb_context.0.as_ptr()
-                                } else {
-                                    ptr::null_mut()
-                                },
-                            );
+                            if let Some(result_cb_context_) = result_cb_context_ {
+                                let result_cb_context = result_cb_context_.lock().unwrap();
+                                result_cb(
+                                    status_code,
+                                    reason_phrase.as_ptr(),
+                                    if let Some(result_xml) = result_xml {
+                                        result_xml.as_ptr()
+                                    } else {
+                                        ptr::null()
+                                    },
+                                    result_cb_context.0.as_ptr(),
+                                );
+                            } else {
+                                result_cb(
+                                    status_code,
+                                    reason_phrase.as_ptr(),
+                                    if let Some(result_xml) = result_xml {
+                                        result_xml.as_ptr()
+                                    } else {
+                                        ptr::null()
+                                    },
+                                    ptr::null_mut(),
+                                );
+                            }
                         }
                     },
                 );
@@ -1005,32 +1002,27 @@ pub unsafe extern "C" fn rcs_client_download_file(
                         rt,
                         move |current, total| {
                             if let Some(progress_cb) = progress_cb {
-                                progress_cb(
-                                    current,
-                                    total,
-                                    if let Some(progress_cb_context_) = &progress_cb_context_ {
-                                        let progress_cb_context =
-                                            progress_cb_context_.lock().unwrap();
-                                        progress_cb_context.0.as_ptr()
-                                    } else {
-                                        ptr::null_mut()
-                                    },
-                                );
+                                if let Some(progress_cb_context_) = &progress_cb_context_ {
+                                    let progress_cb_context = progress_cb_context_.lock().unwrap();
+                                    progress_cb(current, total, progress_cb_context.0.as_ptr());
+                                } else {
+                                    progress_cb(current, total, ptr::null_mut());
+                                }
                             }
                         },
                         move |status_code, reason_phrase| {
                             if let Some(result_cb) = result_cb {
                                 let reason_phrase = CString::new(reason_phrase).unwrap();
-                                result_cb(
-                                    status_code,
-                                    reason_phrase.as_ptr(),
-                                    if let Some(result_cb_context_) = result_cb_context_ {
-                                        let result_cb_context = result_cb_context_.lock().unwrap();
-                                        result_cb_context.0.as_ptr()
-                                    } else {
-                                        ptr::null_mut()
-                                    },
-                                );
+                                if let Some(result_cb_context_) = result_cb_context_ {
+                                    let result_cb_context = result_cb_context_.lock().unwrap();
+                                    result_cb(
+                                        status_code,
+                                        reason_phrase.as_ptr(),
+                                        result_cb_context.0.as_ptr(),
+                                    );
+                                } else {
+                                    result_cb(status_code, reason_phrase.as_ptr(), ptr::null_mut());
+                                }
                             }
                         },
                     );

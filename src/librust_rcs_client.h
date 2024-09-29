@@ -130,7 +130,7 @@ void download_file_result_callback_context_release(void *context);
 
 extern void rcs_client_download_file(struct rcs_runtime *runtime, struct rcs_client *client,
                                 const char *file_uri, const char *download_path, uint32_t start, int32_t total,
-                                download_file_progress_callback progress_cb, void* progress_cb_context,
+                                download_file_progress_callback progress_cb, void *progress_cb_context,
                                 download_file_result_callback result_cb, void *result_cb_context);
 
 extern void destroy_rcs_messaging_session(struct rcs_messaging_session *session);
