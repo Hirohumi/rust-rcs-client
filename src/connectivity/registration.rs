@@ -18,6 +18,7 @@ use std::{
     time::Duration,
 };
 
+use base64::{engine::general_purpose, Engine};
 use tokio::{
     runtime::Runtime,
     time::{sleep_until, Instant},
@@ -307,6 +308,7 @@ impl ClientTransactionCallbacks for RegisterContext {
                                     &transport,
                                     transport_address,
                                     &self.registration,
+                                    self.registration.sip_instance_id,
                                     &self.core,
                                     &self.rt,
                                     move |ev| match ev {
@@ -410,7 +412,11 @@ impl ClientTransactionCallbacks for RegisterContext {
                                             AkaResponse::SyncFailure(auts) => {
                                                 let mut extra_params = Vec::new();
 
-                                                extra_params.push((b"auts".to_vec(), auts));
+                                                let encoded =
+                                                    general_purpose::STANDARD.encode(&auts);
+                                                let encoded = Vec::from(encoded);
+
+                                                extra_params.push((b"auts".to_vec(), encoded));
 
                                                 let client_nonce =
                                                     rand::create_raw_alpha_numeric_string(8);
