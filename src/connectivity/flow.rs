@@ -29,8 +29,11 @@ use rust_rcs_core::{
     ffi::log::platform_log,
     internet::{name_addr::AsNameAddr, Body, Header},
     sip::{
-        sip_subscription::{subscribe_request::SubscribeRequest, subscriber::SubscriberEvent},
-        sip_subscription::{subscriber::Subscriber, InitialSubscribeContext, SubscriptionManager},
+        sip_subscription::{
+            subscribe_request::SubscribeRequest,
+            subscriber::{Subscriber, SubscriberEvent},
+            InitialSubscribeContext, SubscriptionManager,
+        },
         SipCore, SipMessage, SipTransactionManager, SipTransport, SUBSCRIBE,
     },
     util::{rand, raw_string::StrEq},
@@ -203,8 +206,9 @@ pub fn on_registration_authenticated<CB>(
     flow_manager: &Arc<FlowManager>,
     impu: String,
     transport: &Arc<SipTransport>,
-    _transport_address: String,
+    transport_address: String, // use this in Contact Header ?
     registration: &Arc<Registration>,
+    sip_instance_id: Uuid,
     core: &Arc<SipCore>,
     rt: &Arc<Runtime>,
     state_callback: CB,
@@ -231,6 +235,8 @@ pub fn on_registration_authenticated<CB>(
 
     let transport_ = Arc::clone(transport);
     let registration_ = Arc::clone(registration);
+
+    let transport_type = transport_.get_contact_transport_type();
 
     let subscriber = Subscriber::new(
         "Registrar",
@@ -323,10 +329,13 @@ pub fn on_registration_authenticated<CB>(
                                                 }
 
                                                 if !is_current_registry {
-                                                    if let Some(flow_uri) = flow.uri.as_bytes().as_name_addresses().first()
+                                                    if let Some(flow_uri) = flow
+                                                        .uri
+                                                        .as_bytes()
+                                                        .as_name_addresses()
+                                                        .first()
                                                     {
                                                         if let Some(uri_part) = &flow_uri.uri_part {
-
                                                             if uri
                                                                 .as_bytes()
                                                                 .equals_bytes(uri_part.uri, true)
@@ -347,16 +356,17 @@ pub fn on_registration_authenticated<CB>(
                                                     );
 
                                                     let expiration = Instant::now().add(
-                                                        Duration::from_secs(
-                                                            flow.expires as u64,
+                                                        Duration::from_secs(flow.expires as u64),
+                                                    );
+
+                                                    state_callback(
+                                                        SubscriptionEvent::ExpirationRefreshed(
+                                                            expiration,
                                                         ),
                                                     );
 
-                                                    state_callback(SubscriptionEvent::ExpirationRefreshed(expiration));
-
                                                     return;
                                                 }
-
                                             }
                                         }
                                         None => {}
@@ -382,11 +392,58 @@ pub fn on_registration_authenticated<CB>(
                     );
                 }
             }
+
             SubscriberEvent::NearExpiration(_) => {
-                todo!()
+                platform_log(LOG_TAG, "on NearExpiration event");
             }
-            SubscriberEvent::Terminated(_, _, _) | // only one subscription is allowed so terminating one means terminating all
-            SubscriberEvent::SubscribeFailed(_) => {
+
+            SubscriberEvent::Terminated(_, can_resubscribe, retry_after) => {
+                platform_log(
+                    LOG_TAG,
+                    format!("on Terminated event: {}, {}", can_resubscribe, retry_after),
+                );
+                // only one subscription is allowed so terminating one means terminating all
+                let mut guard = flow_manager_.managed_flow.lock().unwrap();
+
+                guard.1.take();
+                guard.2.clear();
+
+                if let Some((transport, _, registration, _)) = &guard.0 {
+                    (flow_manager_.state_callback)(
+                        false,
+                        Arc::clone(transport),
+                        None,
+                        Arc::clone(registration),
+                    );
+                }
+            }
+
+            SubscriberEvent::SubscribeFailed(code) => {
+                platform_log(LOG_TAG, format!("on SubscribeFailed event: {}", code));
+                if code == 200 {
+                    let guard = flow_manager_.managed_flow.lock().unwrap();
+
+                    match &guard.0 {
+                        Some((_, _, _, _)) => match &guard.1 {
+                            Some((impu, _)) => {
+                                if let Some((transport, _, registration, _)) = &guard.0 {
+                                    let public_user_identity = impu.clone();
+                                    (flow_manager_.state_callback)(
+                                        true,
+                                        Arc::clone(transport),
+                                        Some(public_user_identity),
+                                        Arc::clone(registration),
+                                    );
+                                }
+
+                                return;
+                            }
+                            None => {}
+                        },
+                        None => {}
+                    }
+                }
+
                 let mut guard = flow_manager_.managed_flow.lock().unwrap();
 
                 guard.1.take();
@@ -433,13 +490,35 @@ pub fn on_registration_authenticated<CB>(
 
                     message.add_header(Header::new(b"To", format!("<{}>", impu_)));
 
-                    message.add_header(Header::new(b"Contact", format!("<{}>", impu_))); // to-do: is transport_address neccessary? also check NOTIFY 200 Ok
+                    let contact;
+                    if let Some(idx) = impu_.find('@') {
+                        contact = &(impu_[0..idx]);
+                    } else {
+                        contact = &impu_;
+                    }
+
+                    message.add_header(Header::new(
+                        b"Contact",
+                        format!(
+                            "<{}@{};transport={}>;+sip.instance=\"<urn:uuid:{}>\"",
+                            contact,
+                            transport_address,
+                            transport_type,
+                            sip_instance_id
+                                .hyphenated()
+                                .encode_lower(&mut Uuid::encode_buffer())
+                        ),
+                    )); // to-do: is transport_address neccessary? also check NOTIFY 200 Ok
 
                     message.add_header(Header::new(b"Expires", expiration.to_string()));
 
                     message.add_header(Header::new(b"Event", b"reg"));
 
+                    message.add_header(Header::new(b"Accept-Contact", b"*"));
+
                     message.add_header(Header::new(b"Accept", b"application/reginfo+xml"));
+
+                    message.add_header(Header::new(b"Accept-Encoding", b"gzip"));
 
                     Ok(message)
                 }
