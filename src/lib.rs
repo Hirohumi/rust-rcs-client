@@ -859,6 +859,10 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                     security_context,
                     rt,
                     move |current, total| {
+                        platform_log(
+                            LOG_TAG,
+                            format!("upload_file_progress_callback() {}/{}", current, total),
+                        );
                         if let Some(progress_cb) = progress_cb {
                             if let Some(progress_cb_context_) = &progress_cb_context_ {
                                 let progress_cb_context = progress_cb_context_.lock().unwrap();
@@ -869,6 +873,13 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                         }
                     },
                     move |status_code, reason_phrase, result_xml| {
+                        platform_log(
+                            LOG_TAG,
+                            format!(
+                                "upload_file_result_callback() {} {} {:?}",
+                                status_code, reason_phrase, result_xml
+                            ),
+                        );
                         if let Some(result_cb) = result_cb {
                             let reason_phrase = CString::new(reason_phrase).unwrap();
                             let result_xml = if let Some(result_xml) = result_xml {
@@ -882,7 +893,7 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                                 result_cb(
                                     status_code,
                                     reason_phrase.as_ptr(),
-                                    if let Some(result_xml) = result_xml {
+                                    if let Some(result_xml) = &result_xml {
                                         result_xml.as_ptr()
                                     } else {
                                         ptr::null()
@@ -893,7 +904,7 @@ pub unsafe extern "C" fn rcs_client_upload_file(
                                 result_cb(
                                     status_code,
                                     reason_phrase.as_ptr(),
-                                    if let Some(result_xml) = result_xml {
+                                    if let Some(result_xml) = &result_xml {
                                         result_xml.as_ptr()
                                     } else {
                                         ptr::null()

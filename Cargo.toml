@@ -1,6 +1,6 @@
 [package]
 name = "rust-rcs-client"
-version = "0.5.3"
+version = "0.5.4"
 edition = "2021"
 description = "A simple, workable RCS client library."
 license = "Apache-2.0"
