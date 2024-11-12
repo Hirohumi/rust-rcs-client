@@ -1023,52 +1023,60 @@ async fn upload_file_initial_empty_post_inner(
         );
 
         if resp.status_code == 204 {
-            return upload_file_actual_content_post(
-                url,
-                conn,
-                tid,
-                file,
-                thumbnail,
-                msisdn,
-                http_client,
-                gba_context,
-                security_context,
-                None,
-                progress_callback,
-            )
-            .await;
+            if let Ok(conn) = http_client.connect(url, false).await {
+                return upload_file_actual_content_post(
+                    url,
+                    &conn,
+                    tid,
+                    file,
+                    thumbnail,
+                    msisdn,
+                    http_client,
+                    gba_context,
+                    security_context,
+                    None,
+                    progress_callback,
+                )
+                .await;
+            } else {
+                return Err(FileUploadError::NetworkIO);
+            }
         } else if resp.status_code == 401 {
             if let Some(www_authenticate_header) =
                 header::search(&resp.headers, b"WWW-Authenticate", false)
             {
-                // to-do: could also be a simple Digest with ftHTTPCSUser and ftHTTPCSPwd
-                if let Some(Ok(authorization)) = gba::try_process_401_response(
-                    gba_context,
-                    host.as_bytes(),
-                    conn.cipher_id(),
-                    POST,
-                    b"\"/\"",
-                    None,
-                    www_authenticate_header,
-                    http_client,
-                    security_context,
-                )
-                .await
-                {
-                    return upload_file_actual_content_post(
-                        &url,
-                        &conn,
-                        tid,
-                        file,
-                        thumbnail,
-                        msisdn,
-                        http_client,
+                if let Ok(conn) = http_client.connect(url, false).await {
+                    // to-do: could also be a simple Digest with ftHTTPCSUser and ftHTTPCSPwd
+                    if let Some(Ok(authorization)) = gba::try_process_401_response(
                         gba_context,
+                        host.as_bytes(),
+                        conn.cipher_id(),
+                        POST,
+                        b"\"/\"",
+                        None,
+                        www_authenticate_header,
+                        http_client,
                         security_context,
-                        Some(&authorization),
-                        progress_callback,
                     )
-                    .await;
+                    .await
+                    {
+                        return upload_file_actual_content_post(
+                            &url,
+                            &conn,
+                            tid,
+                            file,
+                            thumbnail,
+                            msisdn,
+                            http_client,
+                            gba_context,
+                            security_context,
+                            Some(&authorization),
+                            progress_callback,
+                        )
+                        .await;
+                    }
+                } else {
+                    return Err(FileUploadError::NetworkIO);
                 }
             }
         } else {
